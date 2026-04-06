@@ -26,7 +26,7 @@ abstract final class AppTypography {
 
   // ── 날짜 숫자 — Light, 44px (Stitch: 크고 가벼운 느낌) ──
   // 헤더의 주인공 — 시각적 앵커
-  static final dateNumber = GoogleFonts.inter(
+  static final dateNumber = GoogleFonts.dmSans(
     fontSize: 33,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -34,7 +34,7 @@ abstract final class AppTypography {
   );
 
   // ── 이벤트 제목 — Body scale, Medium ──
-  static final eventTitle = GoogleFonts.inter(
+  static final eventTitle = GoogleFonts.dmSans(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
@@ -42,7 +42,7 @@ abstract final class AppTypography {
   );
 
   // ── 이벤트 시간 — Caption/Micro scale ──
-  static final eventTime = GoogleFonts.inter(
+  static final eventTime = GoogleFonts.dmSans(
     fontSize: 11,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
@@ -51,7 +51,7 @@ abstract final class AppTypography {
 
   // ── 요일 라벨 — Technical Label, ALL-CAPS, wide tracking ──
   // DESIGN.md §3: 8–10px, all-caps, 0.15–0.2em
-  static final dayLabel = GoogleFonts.inter(
+  static final dayLabel = GoogleFonts.dmSans(
     fontSize: 11,
     fontWeight: FontWeight.w700,
     color: AppColors.textSecondary,
@@ -60,7 +60,7 @@ abstract final class AppTypography {
   );
 
   // ── 섹션 라벨 — Technical Label ──
-  static final sectionLabel = GoogleFonts.inter(
+  static final sectionLabel = GoogleFonts.dmSans(
     fontSize: 10,
     fontWeight: FontWeight.w700,
     color: AppColors.textSecondary,
@@ -70,7 +70,7 @@ abstract final class AppTypography {
 
   // ── Display — Bottom Sheet 제목 ──
   // DESIGN.md: Display 24px / Black
-  static final sheetTitle = GoogleFonts.inter(
+  static final sheetTitle = GoogleFonts.dmSans(
     fontSize: 24,
     fontWeight: FontWeight.w900,
     color: AppColors.textPrimary,
@@ -80,7 +80,7 @@ abstract final class AppTypography {
 
   // ── Headline ──
   // DESIGN.md: Headline 18px / Black
-  static final headline = GoogleFonts.inter(
+  static final headline = GoogleFonts.dmSans(
     fontSize: 18,
     fontWeight: FontWeight.w900,
     color: AppColors.textPrimary,
@@ -90,7 +90,7 @@ abstract final class AppTypography {
 
   // ── Body ──
   // DESIGN.md: Body 14px / Regular
-  static final body = GoogleFonts.inter(
+  static final body = GoogleFonts.dmSans(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
@@ -99,7 +99,7 @@ abstract final class AppTypography {
 
   // ── Caption / Micro ──
   // DESIGN.md: 10–12px / Bold or Black
-  static final caption = GoogleFonts.inter(
+  static final caption = GoogleFonts.dmSans(
     fontSize: 10,
     fontWeight: FontWeight.w700,
     color: AppColors.textSecondary,

@@ -12,6 +12,7 @@ import 'package:ratio_calendar/features/calendar/presentation/widgets/timeline_v
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/presentation/providers/event_providers.dart';
 import 'package:ratio_calendar/features/event/presentation/screens/event_create_sheet.dart';
+import 'package:ratio_calendar/features/event/presentation/screens/event_detail_sheet.dart';
 import 'package:ratio_calendar/features/side_menu/presentation/screens/side_menu_screen.dart';
 
 /// 캘린더 메인 화면 — Day / 3-Day / Month View 지원
@@ -107,9 +108,7 @@ class CalendarMainScreen extends ConsumerWidget {
             selectedDate: selectedDate,
             events: selectedEvents,
             calendarColors: _mockColors,
-            onEventTap: (event) {
-              debugPrint('Event tapped: ${event.title}');
-            },
+            onEventTap: (event) => _showEventDetail(context, event),
           ),
 
           // 하단 여백
@@ -154,12 +153,19 @@ class CalendarMainScreen extends ConsumerWidget {
                 initialStartTime: dateTime,
               );
             },
-            onEventTap: (event) {
-              debugPrint('Event tapped: ${event.title}');
-            },
+            onEventTap: (event) => _showEventDetail(context, event),
           ),
         ),
       ],
+    );
+  }
+
+  void _showEventDetail(BuildContext context, EventEntity event) {
+    final color = _mockColors[event.calendarId] ?? AppColors.personal;
+    EventDetailSheet.show(
+      context,
+      event: event,
+      calendarColor: color,
     );
   }
 

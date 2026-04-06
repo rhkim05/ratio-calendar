@@ -44,7 +44,7 @@ abstract final class AppTheme {
         platform: TargetPlatform.android,
 
         // Inter 기본 폰트
-        textTheme: GoogleFonts.interTextTheme().copyWith(
+        textTheme: GoogleFonts.dmSansTextTheme().copyWith(
           displayLarge: AppTypography.sheetTitle,
           headlineLarge: AppTypography.headline,
           headlineMedium: AppTypography.monthTitle,
@@ -123,7 +123,7 @@ abstract final class AppTheme {
           surface: AppColors.darkSurface,
           onSurface: AppColors.darkTextPrimary,
         ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+        textTheme: GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme),
         // TODO(phase2): Dark 테마 세부 설정
       );
 }
