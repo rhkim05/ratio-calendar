@@ -15,9 +15,11 @@ class DayHeaderRow extends StatelessWidget {
   const DayHeaderRow({
     super.key,
     required this.days,
+    this.accentColor = AppColors.todayHighlight,
   });
 
   final List<DateTime> days;
+  final Color accentColor;
 
   static const _dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -52,6 +54,7 @@ class DayHeaderRow extends StatelessWidget {
                   dayName: _dayNames[date.weekday - 1],
                   dayNumber: date.day,
                   isToday: _isToday(date),
+                  accentColor: accentColor,
                 ),
               )),
         ],
@@ -65,11 +68,13 @@ class _DayColumn extends StatelessWidget {
     required this.dayName,
     required this.dayNumber,
     required this.isToday,
+    required this.accentColor,
   });
 
   final String dayName;
   final int dayNumber;
   final bool isToday;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +85,7 @@ class _DayColumn extends StatelessWidget {
         Text(
           dayName,
           style: AppTypography.dayLabel.copyWith(
-            color: isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+            color: isToday ? accentColor : AppColors.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -93,7 +98,7 @@ class _DayColumn extends StatelessWidget {
           child: Container(
             decoration: isToday
                 ? BoxDecoration(
-                    color: AppColors.todayHighlight,
+                    color: accentColor,
                     borderRadius: BorderRadius.circular(6),
                   )
                 : null,

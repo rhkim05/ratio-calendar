@@ -6,7 +6,7 @@ part of 'event_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$eventDetailHash() => r'03c1c57bf42281b22d547df1b6dffdd7bbbbf8c1';
+String _$eventDetailHash() => r'75bba84d72791e05462cc45d2fae84531d78d709';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -169,7 +169,7 @@ class _EventDetailProviderElement
   String get eventId => (origin as EventDetailProvider).eventId;
 }
 
-String _$eventsByDateRangeHash() => r'75a4f3a58511e5eba36dad44b0a29295c3467914';
+String _$eventsByDateRangeHash() => r'5e0cbb6e66ab1ccbb06167763651659cd2159a8b';
 
 /// 날짜 범위 기준 이벤트 목록
 ///
@@ -349,7 +349,7 @@ final eventFormIsValidProvider = AutoDisposeProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef EventFormIsValidRef = AutoDisposeProviderRef<bool>;
-String _$eventFormHash() => r'04b9da581eda7833fe0c8e427e932b78e6b2ba1e';
+String _$eventFormHash() => r'3dc161056830829938fa0f36c8d0f44df90e105e';
 
 /// 이벤트 생성/수정 폼 상태
 ///

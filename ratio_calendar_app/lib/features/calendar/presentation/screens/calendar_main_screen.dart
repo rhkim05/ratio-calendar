@@ -13,6 +13,7 @@ import 'package:ratio_calendar/features/calendar/presentation/widgets/timeline_v
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/presentation/providers/event_providers.dart';
 import 'package:ratio_calendar/features/event/presentation/screens/event_create_sheet.dart';
+import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 import 'package:ratio_calendar/features/event/presentation/screens/event_detail_sheet.dart';
 import 'package:ratio_calendar/features/side_menu/presentation/screens/side_menu_screen.dart';
 
@@ -33,6 +34,7 @@ class CalendarMainScreen extends ConsumerWidget {
     final visibleRange = ref.watch(visibleDateRangeProvider);
     final viewType = ref.watch(currentViewTypeProvider);
     final localEvents = ref.watch(localEventsByDateProvider);
+    final accent = ref.watch(accentColorProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -49,8 +51,8 @@ class CalendarMainScreen extends ConsumerWidget {
             // 뷰 타입에 따라 다른 본문
             Expanded(
               child: viewType == CalendarViewType.month
-                  ? _buildMonthView(context, ref, selectedDate, localEvents)
-                  : _buildTimelineView(context, ref, visibleRange, viewType, localEvents),
+                  ? _buildMonthView(context, ref, selectedDate, localEvents, accent)
+                  : _buildTimelineView(context, ref, visibleRange, viewType, localEvents, accent),
             ),
           ],
         ),
@@ -80,6 +82,7 @@ class CalendarMainScreen extends ConsumerWidget {
     WidgetRef ref,
     DateTime selectedDate,
     Map<String, List<EventEntity>> localEvents,
+    Color accent,
   ) {
     final mockEvents = _buildMonthMockEvents(selectedDate);
     // 로컬 이벤트를 mock 이벤트에 머지
@@ -96,6 +99,10 @@ class CalendarMainScreen extends ConsumerWidget {
             selectedDate: selectedDate,
             eventsByDay: mockEvents,
             calendarColors: _mockColors,
+            startOfWeekDay: ref.watch(
+              settingsProvider.select((s) => s.startOfWeek.weekday),
+            ),
+            accentColor: accent,
             onDateTap: (date) {
               ref.read(selectedDateProvider.notifier).select(date);
             },
@@ -127,6 +134,7 @@ class CalendarMainScreen extends ConsumerWidget {
     ({DateTime start, DateTime end}) visibleRange,
     CalendarViewType viewType,
     Map<String, List<EventEntity>> localEvents,
+    Color accent,
   ) {
     final isDayView = viewType == CalendarViewType.day;
 
@@ -141,8 +149,8 @@ class CalendarMainScreen extends ConsumerWidget {
       key: ValueKey(viewType),
       viewType: viewType,
       headerBuilder: (day) => isDayView
-          ? _buildDayViewHeaderCell(day)
-          : _buildThreeDayHeaderCell(day),
+          ? _buildDayViewHeaderCell(day, accent)
+          : _buildThreeDayHeaderCell(day, accent),
       bodyBuilder: ({
         required horizontalController,
         required dayColumnWidth,
@@ -244,7 +252,7 @@ class CalendarMainScreen extends ConsumerWidget {
   ];
 
   /// 3-Day View 헤더 셀 (요일 약어 + 날짜 숫자)
-  Widget _buildThreeDayHeaderCell(DateTime day) {
+  Widget _buildThreeDayHeaderCell(DateTime day, Color accent) {
     final isToday = _isToday(day);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -252,7 +260,7 @@ class CalendarMainScreen extends ConsumerWidget {
         Text(
           _dayNames3[day.weekday - 1],
           style: AppTypography.dayLabel.copyWith(
-            color: isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+            color: isToday ? accent : AppColors.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -263,7 +271,7 @@ class CalendarMainScreen extends ConsumerWidget {
           child: Container(
             decoration: isToday
                 ? BoxDecoration(
-                    color: AppColors.todayHighlight,
+                    color: accent,
                     borderRadius: BorderRadius.circular(6),
                   )
                 : null,
@@ -285,7 +293,7 @@ class CalendarMainScreen extends ConsumerWidget {
   }
 
   /// Day View 헤더 셀 (요일 풀네임 + 날짜 숫자, today 하이라이트는 3-Day View와 동일)
-  Widget _buildDayViewHeaderCell(DateTime day) {
+  Widget _buildDayViewHeaderCell(DateTime day, Color accent) {
     final isToday = _isToday(day);
     return Padding(
       padding: const EdgeInsets.only(
@@ -300,7 +308,7 @@ class CalendarMainScreen extends ConsumerWidget {
             _dayNamesFull[day.weekday - 1],
             style: AppTypography.dayLabel.copyWith(
               color:
-                  isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+                  isToday ? accent : AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -311,7 +319,7 @@ class CalendarMainScreen extends ConsumerWidget {
             child: Container(
               decoration: isToday
                   ? BoxDecoration(
-                      color: AppColors.todayHighlight,
+                      color: accent,
                       borderRadius: BorderRadius.circular(6),
                     )
                   : null,

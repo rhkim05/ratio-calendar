@@ -180,8 +180,8 @@ class EventDetailSheet extends ConsumerWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      ref.read(localEventsProvider.notifier).remove(event.id);
-      Navigator.of(context).pop();
+      await ref.read(localEventsProvider.notifier).remove(event.id);
+      if (context.mounted) Navigator.of(context).pop();
     }
   }
 

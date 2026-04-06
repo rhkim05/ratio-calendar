@@ -1,10 +1,11 @@
-/// 캘린더 Repository 인터페이스 (추상 클래스)
-/// Domain 레이어에서 정의, Data 레이어에서 구현
-///
-/// 메서드:
-///   - getCalendars(workspaceId) → List<CalendarEntity>
-///   - getCalendarById(id) → CalendarEntity?
-///   - createCalendar(calendar) → CalendarEntity
-///   - updateCalendar(calendar) → CalendarEntity
-///   - deleteCalendar(id) → void
-///   - toggleVisibility(id, isVisible) → void
+import 'package:ratio_calendar/features/calendar/domain/entities/calendar_entity.dart';
+
+/// 캘린더 Repository 인터페이스
+abstract class CalendarRepository {
+  Future<List<CalendarEntity>> getAllCalendars();
+  Future<CalendarEntity?> getCalendarById(String id);
+  Future<void> createCalendar(CalendarEntity calendar);
+  Future<void> updateCalendar(CalendarEntity calendar);
+  Future<void> deleteCalendar(String id);
+  Future<void> ensureDefaults();
+}

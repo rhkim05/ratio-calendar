@@ -3,46 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ratio_calendar/core/constants/app_sizes.dart';
+import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/core/router/app_router.dart';
 import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/core/theme/app_typography.dart';
 import 'package:ratio_calendar/features/auth/presentation/providers/auth_providers.dart';
+import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 
 /// 설정 화면
-///
-/// Stitch settings_screen 디자인 참고:
-///   - GENERAL: Default View, Start of Week, Time Zone
-///   - NOTIFICATIONS: Event Reminders (토글), Default Reminder Time, Daily Agenda (토글)
-///   - APPEARANCE: Theme, Accent Color (색상 원형 버튼)
-///   - ACCOUNT: Email / Sign Out (미로그인 시 Sign In)
-///   - 하단: APP VERSION 1.0.0
-class SettingsScreen extends ConsumerStatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final notifier = ref.read(settingsProvider.notifier);
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // UI-only state (기능 연결은 다음 단계)
-  String _defaultView = '3-Day';
-  String _startOfWeek = 'Sunday';
-  bool _eventReminders = true;
-  String _defaultReminderTime = '15 minutes before';
-  bool _dailyAgenda = false;
-  String _theme = 'Light';
-  int _selectedAccentIndex = 0;
-
-  static const _accentColors = [
-    AppColors.personal,    // Blue
-    AppColors.work,        // Red
-    AppColors.shared,      // Green
-    Color(0xFFFFCC00),     // Yellow
-    Color(0xFFAF52DE),     // Purple
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -81,33 +57,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: EdgeInsets.zero,
                 children: [
                   // ── GENERAL ──
-                  _SectionHeader(title: 'GENERAL'),
+                  const _SectionHeader(title: 'GENERAL'),
                   _SettingRow(
                     label: 'Default View',
-                    value: _defaultView,
+                    value: _viewLabel(settings.defaultView),
                     hasChevron: true,
                     onTap: () => _showOptionPicker(
+                      context: context,
                       title: 'Default View',
                       options: ['Day', '3-Day', 'Month'],
-                      selected: _defaultView,
-                      onSelected: (v) => setState(() => _defaultView = v),
+                      selected: _viewLabel(settings.defaultView),
+                      onSelected: (v) => notifier.setDefaultView(_parseView(v)),
                     ),
                   ),
                   _SettingRow(
                     label: 'Start of Week',
-                    value: _startOfWeek,
+                    value: settings.startOfWeek.label,
                     hasChevron: true,
                     onTap: () => _showOptionPicker(
+                      context: context,
                       title: 'Start of Week',
-                      options: ['Sunday', 'Monday', 'Saturday'],
-                      selected: _startOfWeek,
-                      onSelected: (v) => setState(() => _startOfWeek = v),
+                      options: StartOfWeek.values.map((e) => e.label).toList(),
+                      selected: settings.startOfWeek.label,
+                      onSelected: (v) => notifier.setStartOfWeek(
+                        StartOfWeek.values.firstWhere((e) => e.label == v),
+                      ),
                     ),
                   ),
-                  _SettingRow(
+                  const _SettingRow(
                     label: 'Time Zone',
                     value: 'Auto (GMT+9)',
-                    trailing: const Icon(
+                    trailing: Icon(
                       Icons.language,
                       size: 18,
                       color: AppColors.textSecondary,
@@ -116,59 +96,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const _SectionDivider(),
 
                   // ── NOTIFICATIONS ──
-                  _SectionHeader(title: 'NOTIFICATIONS'),
+                  const _SectionHeader(title: 'NOTIFICATIONS'),
                   _SettingRow(
                     label: 'Event Reminders',
                     trailing: CupertinoSwitch(
-                      value: _eventReminders,
+                      value: settings.eventReminders,
                       activeTrackColor: AppColors.textPrimary,
-                      onChanged: (v) => setState(() => _eventReminders = v),
+                      onChanged: notifier.setEventReminders,
                     ),
                   ),
                   _SettingRow(
                     label: 'Default Reminder Time',
-                    value: _defaultReminderTime,
+                    value: _alertLabel(settings.defaultReminderTime),
                     hasChevron: true,
                     onTap: () => _showOptionPicker(
+                      context: context,
                       title: 'Default Reminder Time',
                       options: [
+                        'None',
                         '5 minutes before',
-                        '10 minutes before',
                         '15 minutes before',
                         '30 minutes before',
                         '1 hour before',
+                        '1 day before',
                       ],
-                      selected: _defaultReminderTime,
+                      selected: _alertLabel(settings.defaultReminderTime),
                       onSelected: (v) =>
-                          setState(() => _defaultReminderTime = v),
+                          notifier.setDefaultReminderTime(_parseAlert(v)),
                     ),
                   ),
                   _SettingRow(
                     label: 'Daily Agenda',
                     subtitle: 'Receive a daily summary each morning',
                     trailing: CupertinoSwitch(
-                      value: _dailyAgenda,
+                      value: settings.dailyAgenda,
                       activeTrackColor: AppColors.textPrimary,
-                      onChanged: (v) => setState(() => _dailyAgenda = v),
+                      onChanged: notifier.setDailyAgenda,
                     ),
                   ),
                   const _SectionDivider(),
 
                   // ── APPEARANCE ──
-                  _SectionHeader(title: 'APPEARANCE'),
+                  const _SectionHeader(title: 'APPEARANCE'),
                   _SettingRow(
                     label: 'Theme',
-                    value: _theme,
-                    trailing: Icon(
-                      _theme == 'Light' ? Icons.light_mode : Icons.dark_mode,
+                    value: 'Light',
+                    trailing: const Icon(
+                      Icons.light_mode,
                       size: 18,
                       color: AppColors.textSecondary,
-                    ),
-                    onTap: () => _showOptionPicker(
-                      title: 'Theme',
-                      options: ['Light'],
-                      selected: _theme,
-                      onSelected: (v) => setState(() => _theme = v),
                     ),
                   ),
                   // Accent Color 행
@@ -187,30 +163,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: List.generate(_accentColors.length, (i) {
-                            final isSelected = i == _selectedAccentIndex;
-                            return GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedAccentIndex = i),
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                margin: const EdgeInsets.only(left: 8),
-                                decoration: BoxDecoration(
-                                  color: _accentColors[i].withValues(
-                                    alpha: isSelected ? 1.0 : 0.35,
+                          children: List.generate(
+                            accentColorOptions.length,
+                            (i) {
+                              final isSelected =
+                                  i == settings.accentColorIndex;
+                              return GestureDetector(
+                                onTap: () => notifier.setAccentColorIndex(i),
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  margin: const EdgeInsets.only(left: 8),
+                                  decoration: BoxDecoration(
+                                    color: accentColorOptions[i].withValues(
+                                      alpha: isSelected ? 1.0 : 0.35,
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: accentColorOptions[i],
+                                            width: 2.5,
+                                          )
+                                        : null,
                                   ),
-                                  shape: BoxShape.circle,
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: _accentColors[i],
-                                          width: 2.5,
-                                        )
-                                      : null,
                                 ),
-                              ),
-                            );
-                          }),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -218,7 +197,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const _SectionDivider(),
 
                   // ── ACCOUNT ──
-                  _SectionHeader(title: 'ACCOUNT'),
+                  const _SectionHeader(title: 'ACCOUNT'),
                   Builder(
                     builder: (context) {
                       final isLoggedIn = ref.watch(isLoggedInProvider);
@@ -297,8 +276,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// 옵션 선택 바텀 시트
+  // ── Helpers ──
+
+  String _viewLabel(CalendarViewType type) => switch (type) {
+        CalendarViewType.day => 'Day',
+        CalendarViewType.threeDay => '3-Day',
+        CalendarViewType.month => 'Month',
+        _ => '3-Day',
+      };
+
+  CalendarViewType _parseView(String label) => switch (label) {
+        'Day' => CalendarViewType.day,
+        '3-Day' => CalendarViewType.threeDay,
+        'Month' => CalendarViewType.month,
+        _ => CalendarViewType.threeDay,
+      };
+
+  String _alertLabel(AlertType type) => switch (type) {
+        AlertType.none => 'None',
+        AlertType.fiveMinutes => '5 minutes before',
+        AlertType.fifteenMinutes => '15 minutes before',
+        AlertType.thirtyMinutes => '30 minutes before',
+        AlertType.oneHour => '1 hour before',
+        AlertType.oneDay => '1 day before',
+      };
+
+  AlertType _parseAlert(String label) => switch (label) {
+        'None' => AlertType.none,
+        '5 minutes before' => AlertType.fiveMinutes,
+        '15 minutes before' => AlertType.fifteenMinutes,
+        '30 minutes before' => AlertType.thirtyMinutes,
+        '1 hour before' => AlertType.oneHour,
+        '1 day before' => AlertType.oneDay,
+        _ => AlertType.fifteenMinutes,
+      };
+
   void _showOptionPicker({
+    required BuildContext context,
     required String title,
     required List<String> options,
     required String selected,

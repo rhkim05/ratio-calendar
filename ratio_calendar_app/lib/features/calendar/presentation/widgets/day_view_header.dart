@@ -14,9 +14,11 @@ class DayViewHeader extends StatelessWidget {
   const DayViewHeader({
     super.key,
     required this.date,
+    this.accentColor = AppColors.todayHighlight,
   });
 
   final DateTime date;
+  final Color accentColor;
 
   static const _dayNames = [
     'MONDAY',
@@ -63,7 +65,7 @@ class DayViewHeader extends StatelessWidget {
           Text(
             dayName,
             style: AppTypography.dayLabel.copyWith(
-              color: isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+              color: isToday ? accentColor : AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -73,7 +75,7 @@ class DayViewHeader extends StatelessWidget {
           Text(
             date.day.toString(),
             style: AppTypography.dateNumber.copyWith(
-              color: isToday ? AppColors.todayHighlight : AppColors.textPrimary,
+              color: isToday ? accentColor : AppColors.textPrimary,
             ),
           ),
         ],

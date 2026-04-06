@@ -19,6 +19,8 @@ class MonthGrid extends StatelessWidget {
     required this.eventsByDay,
     required this.calendarColors,
     required this.onDateTap,
+    this.startOfWeekDay = DateTime.sunday,
+    this.accentColor = AppColors.todayHighlight,
   });
 
   final DateTime displayedMonth;
@@ -27,7 +29,24 @@ class MonthGrid extends StatelessWidget {
   final Map<String, Color> calendarColors;
   final void Function(DateTime date) onDateTap;
 
-  static const _dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  /// 한 주의 시작 요일 (DateTime.sunday=7, DateTime.monday=1, etc.)
+  final int startOfWeekDay;
+
+  /// Today 하이라이트 색상
+  final Color accentColor;
+
+  static const _allDayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  /// 시작 요일에 맞게 재정렬된 요일 라벨
+  List<String> get _dayLabels {
+    // DateTime.weekday: Mon=1 ~ Sun=7
+    // _allDayLabels: [Mon, Tue, Wed, Thu, Fri, Sat, Sun] (index 0~6)
+    final startIndex = (startOfWeekDay - 1) % 7;
+    return [
+      ..._allDayLabels.sublist(startIndex),
+      ..._allDayLabels.sublist(0, startIndex),
+    ];
+  }
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
@@ -50,8 +69,10 @@ class MonthGrid extends StatelessWidget {
     final firstOfMonth = DateTime(displayedMonth.year, displayedMonth.month, 1);
     final daysInMonth = DateTime(displayedMonth.year, displayedMonth.month + 1, 0).day;
 
-    // 일요일 시작 (weekday: 1=Mon ~ 7=Sun → 일요일=7 → offset 0)
-    final startWeekday = firstOfMonth.weekday % 7; // Sun=0, Mon=1, ...
+    // startOfWeekDay 기준으로 offset 계산
+    // firstOfMonth.weekday: Mon=1 ~ Sun=7
+    final startWeekday =
+        (firstOfMonth.weekday - startOfWeekDay + 7) % 7;
 
     final dates = <DateTime>[];
 
@@ -152,6 +173,7 @@ class MonthGrid extends StatelessWidget {
                       isToday: isToday,
                       isSelected: isSelected,
                       eventDots: dots,
+                      accentColor: accentColor,
                     ),
                   ),
                 );
@@ -172,6 +194,7 @@ class _DateCell extends StatelessWidget {
     required this.isToday,
     required this.isSelected,
     required this.eventDots,
+    required this.accentColor,
   });
 
   final int day;
@@ -179,6 +202,7 @@ class _DateCell extends StatelessWidget {
   final bool isToday;
   final bool isSelected;
   final List<Color> eventDots;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +217,7 @@ class _DateCell extends StatelessWidget {
             height: 32,
             decoration: isToday
                 ? BoxDecoration(
-                    color: AppColors.todayHighlight,
+                    color: accentColor,
                     borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                   )
                 : isSelected

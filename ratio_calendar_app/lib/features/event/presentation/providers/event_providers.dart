@@ -1,43 +1,68 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
+import 'package:ratio_calendar/features/event/domain/repositories/event_repository.dart';
+import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 
 part 'event_providers.g.dart';
 
-// ── 로컬 이벤트 저장소 (Firestore 연동 전 임시) ──
+// ── Repository Provider ──
 
-/// 로컬 메모리에 이벤트를 저장하는 Provider
+/// EventRepository는 main.dart에서 override로 주입
+final eventRepositoryProvider = Provider<EventRepository>((ref) {
+  throw UnimplementedError('eventRepositoryProvider must be overridden');
+});
+
+// ── 이벤트 상태 관리 (Isar 기반) ──
+
+/// Isar에서 모든 이벤트를 로드하고 CRUD 시 즉시 반영
 final localEventsProvider =
-    NotifierProvider<LocalEventsNotifier, List<EventEntity>>(
+    AsyncNotifierProvider<LocalEventsNotifier, List<EventEntity>>(
   LocalEventsNotifier.new,
 );
 
-class LocalEventsNotifier extends Notifier<List<EventEntity>> {
+class LocalEventsNotifier extends AsyncNotifier<List<EventEntity>> {
   @override
-  List<EventEntity> build() => [];
-
-  void add(EventEntity event) {
-    state = [...state, event];
+  Future<List<EventEntity>> build() async {
+    final repo = ref.watch(eventRepositoryProvider);
+    return repo.getAllEvents();
   }
 
-  void remove(String eventId) {
-    state = state.where((e) => e.id != eventId).toList();
+  Future<void> add(EventEntity event) async {
+    final repo = ref.read(eventRepositoryProvider);
+    await repo.createEvent(event);
+    state = AsyncValue.data(<EventEntity>[
+      ...(state.valueOrNull ?? []),
+      event,
+    ]);
   }
 
-  void update(EventEntity updated) {
-    state = [
-      for (final e in state)
+  Future<void> remove(String eventId) async {
+    final repo = ref.read(eventRepositoryProvider);
+    await repo.deleteEvent(eventId);
+    final current = state.valueOrNull ?? <EventEntity>[];
+    state = AsyncValue.data(
+      current.where((e) => e.id != eventId).toList(),
+    );
+  }
+
+  Future<void> edit(EventEntity updated) async {
+    final repo = ref.read(eventRepositoryProvider);
+    await repo.updateEvent(updated);
+    final current = state.valueOrNull ?? <EventEntity>[];
+    state = AsyncValue.data(<EventEntity>[
+      for (final e in current)
         if (e.id == updated.id) updated else e,
-    ];
+    ]);
   }
 }
 
-/// 날짜 기준으로 로컬 이벤트를 그룹핑하는 Provider
+/// 날짜 기준으로 이벤트를 그룹핑하는 Provider
 final localEventsByDateProvider =
     Provider<Map<String, List<EventEntity>>>((ref) {
-  final events = ref.watch(localEventsProvider);
+  final eventsAsync = ref.watch(localEventsProvider);
+  final events = eventsAsync.valueOrNull ?? [];
   final map = <String, List<EventEntity>>{};
   for (final event in events) {
     final key =
@@ -52,8 +77,8 @@ final localEventsByDateProvider =
 /// 특정 이벤트 조회
 @riverpod
 Future<EventEntity?> eventDetail(EventDetailRef ref, String eventId) async {
-  // TODO: Repository 연결 후 Firestore에서 로드
-  return null;
+  final repo = ref.watch(eventRepositoryProvider);
+  return repo.getEventById(eventId);
 }
 
 /// 날짜 범위 기준 이벤트 목록
@@ -63,8 +88,8 @@ Future<List<EventEntity>> eventsByDateRange(
   required DateTime start,
   required DateTime end,
 }) async {
-  // TODO: Repository 연결 후 Firestore에서 로드
-  return [];
+  final repo = ref.watch(eventRepositoryProvider);
+  return repo.getEventsByDateRange(start, end);
 }
 
 // ── 폼 상태 ──
@@ -73,7 +98,10 @@ Future<List<EventEntity>> eventsByDateRange(
 @riverpod
 class EventForm extends _$EventForm {
   @override
-  EventFormState build() => EventFormState();
+  EventFormState build() {
+    final defaultAlert = ref.read(settingsProvider).defaultReminderTime;
+    return EventFormState(alert: defaultAlert);
+  }
 
   void updateTitle(String title) =>
       state = state.copyWith(title: title);

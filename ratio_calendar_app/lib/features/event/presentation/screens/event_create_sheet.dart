@@ -7,6 +7,7 @@ import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/core/theme/app_typography.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/presentation/providers/event_providers.dart';
+import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 
 /// 일정 생성 Bottom Sheet
 ///
@@ -73,11 +74,12 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
   late DateTime _startTime;
   late DateTime _endTime;
   RecurrenceType _recurrence = RecurrenceType.never;
-  AlertType _alert = AlertType.fifteenMinutes;
+  late AlertType _alert;
 
   @override
   void initState() {
     super.initState();
+    _alert = ref.read(settingsProvider).defaultReminderTime;
     final now = DateTime.now();
 
     if (widget.isEditMode && widget.event != null) {
@@ -123,7 +125,7 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
@@ -143,7 +145,7 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
             : _descriptionController.text.trim(),
         updatedAt: now,
       );
-      ref.read(localEventsProvider.notifier).update(updated);
+      await ref.read(localEventsProvider.notifier).edit(updated);
     } else {
       // 생성 모드: 새 이벤트 추가
       final event = EventEntity(
@@ -157,11 +159,11 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        calendarId: 'sprint',
+        calendarId: 'personal',
         createdAt: now,
         updatedAt: now,
       );
-      ref.read(localEventsProvider.notifier).add(event);
+      await ref.read(localEventsProvider.notifier).add(event);
     }
 
     Navigator.of(context).pop();

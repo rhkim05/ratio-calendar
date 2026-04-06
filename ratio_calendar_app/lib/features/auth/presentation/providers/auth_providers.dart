@@ -147,14 +147,14 @@ class AuthNotifier extends Notifier<AuthState> {
     );
 
     // 로컬 이벤트 → Firestore 마이그레이션
-    final localEvents = ref.read(localEventsProvider);
+    final localEvents = ref.read(localEventsProvider).valueOrNull ?? [];
     if (localEvents.isNotEmpty) {
       await _migrationService.migrateLocalEvents(
         workspaceId: workspaceId,
         events: localEvents,
       );
-      // 마이그레이션 후 로컬 이벤트 비우기
-      ref.read(localEventsProvider.notifier).state = [];
+      // 마이그레이션 후 로컬 이벤트는 Firestore 동기화 시 갱신됨
+      ref.invalidate(localEventsProvider);
     }
 
     state = AuthAuthenticated(user: user);

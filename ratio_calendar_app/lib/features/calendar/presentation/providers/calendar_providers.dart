@@ -1,16 +1,28 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/features/calendar/domain/entities/calendar_entity.dart';
+import 'package:ratio_calendar/features/calendar/domain/repositories/calendar_repository.dart';
+import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'calendar_providers.g.dart';
 
+// ── Repository Provider ──
+
+/// CalendarRepository는 main.dart에서 override로 주입
+final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
+  throw UnimplementedError('calendarRepositoryProvider must be overridden');
+});
+
 // ── 뷰 상태 ──
 
-/// 현재 캘린더 뷰 타입 (기본: 3-Day)
+/// 현재 캘린더 뷰 타입 (Settings의 Default View를 초기값으로 사용)
 @riverpod
 class CurrentViewType extends _$CurrentViewType {
   @override
-  CalendarViewType build() => CalendarViewType.threeDay;
+  CalendarViewType build() {
+    return ref.read(settingsProvider).defaultView;
+  }
 
   void change(CalendarViewType type) {
     state = type;
@@ -45,7 +57,9 @@ class VisibleDateRange extends _$VisibleDateRange {
   ({DateTime start, DateTime end}) build() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return (start: today, end: today.add(const Duration(days: 2)));
+    final viewType = ref.read(currentViewTypeProvider);
+    final days = viewType == CalendarViewType.day ? 0 : 2;
+    return (start: today, end: today.add(Duration(days: days)));
   }
 
   void update({required DateTime start, required DateTime end}) =>
@@ -85,18 +99,65 @@ class GoToTodayTrigger extends _$GoToTodayTrigger {
 
 // ── 데이터 ──
 
-/// 사용자의 모든 캘린더 목록
-@riverpod
-class CalendarList extends _$CalendarList {
-  @override
-  AsyncValue<List<CalendarEntity>> build() => const AsyncValue.loading();
+/// 사용자의 모든 캘린더 목록 (Isar에서 로드)
+final calendarListProvider =
+    AsyncNotifierProvider<CalendarListNotifier, List<CalendarEntity>>(
+  CalendarListNotifier.new,
+);
 
-  // TODO: Repository 연결 후 Firestore에서 로드
+class CalendarListNotifier extends AsyncNotifier<List<CalendarEntity>> {
+  @override
+  Future<List<CalendarEntity>> build() async {
+    final repo = ref.watch(calendarRepositoryProvider);
+    await repo.ensureDefaults();
+    return repo.getAllCalendars();
+  }
+
+  Future<void> add(CalendarEntity calendar) async {
+    final repo = ref.read(calendarRepositoryProvider);
+    await repo.createCalendar(calendar);
+    state = AsyncValue.data(<CalendarEntity>[
+      ...(state.valueOrNull ?? []),
+      calendar,
+    ]);
+  }
+
+  Future<void> edit(CalendarEntity calendar) async {
+    final repo = ref.read(calendarRepositoryProvider);
+    await repo.updateCalendar(calendar);
+    final current = state.valueOrNull ?? <CalendarEntity>[];
+    state = AsyncValue.data(<CalendarEntity>[
+      for (final c in current)
+        if (c.id == calendar.id) calendar else c,
+    ]);
+  }
+
+  Future<void> remove(String id) async {
+    final repo = ref.read(calendarRepositoryProvider);
+    await repo.deleteCalendar(id);
+    final current = state.valueOrNull ?? <CalendarEntity>[];
+    state = AsyncValue.data(
+      current.where((c) => c.id != id).toList(),
+    );
+  }
+
+  Future<void> toggleVisibility(String id) async {
+    final calendars = state.valueOrNull ?? [];
+    final target = calendars.firstWhere((c) => c.id == id);
+    final updated = target.copyWith(
+      isVisible: !target.isVisible,
+      updatedAt: DateTime.now(),
+    );
+    await edit(updated);
+  }
 }
 
 /// 토글이 켜진 캘린더만 필터링
 @riverpod
 List<CalendarEntity> visibleCalendars(VisibleCalendarsRef ref) {
   final calendars = ref.watch(calendarListProvider);
-  return calendars.whenOrNull(data: (list) => list.where((c) => c.isVisible).toList()) ?? [];
+  return calendars.whenOrNull(
+        data: (list) => list.where((c) => c.isVisible).toList(),
+      ) ??
+      [];
 }

@@ -26,9 +26,9 @@ final visibleCalendarsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef VisibleCalendarsRef = AutoDisposeProviderRef<List<CalendarEntity>>;
-String _$currentViewTypeHash() => r'5dc447a3bf50aff50886bd4b9bc488e97f21af8d';
+String _$currentViewTypeHash() => r'04afe5706c8e6199a7bebcdcbbab72d39098b8c4';
 
-/// 현재 캘린더 뷰 타입 (기본: 3-Day)
+/// 현재 캘린더 뷰 타입 (Settings의 Default View를 초기값으로 사용)
 ///
 /// Copied from [CurrentViewType].
 @ProviderFor(CurrentViewType)
@@ -61,7 +61,7 @@ final selectedDateProvider =
 );
 
 typedef _$SelectedDate = AutoDisposeNotifier<DateTime>;
-String _$visibleDateRangeHash() => r'40bf9697e2dce60a49e1b42d2bff2ada53c19936';
+String _$visibleDateRangeHash() => r'11ef720ee0026351772d6ef3b4ebb1f61bad1d41';
 
 /// 현재 화면에 표시 중인 날짜 범위
 ///
@@ -118,22 +118,5 @@ final goToTodayTriggerProvider =
 );
 
 typedef _$GoToTodayTrigger = AutoDisposeNotifier<int>;
-String _$calendarListHash() => r'bec555920ae27524461b4145f6f3b0ec17886f0d';
-
-/// 사용자의 모든 캘린더 목록
-///
-/// Copied from [CalendarList].
-@ProviderFor(CalendarList)
-final calendarListProvider = AutoDisposeNotifierProvider<CalendarList,
-    AsyncValue<List<CalendarEntity>>>.internal(
-  CalendarList.new,
-  name: r'calendarListProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$calendarListHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$CalendarList = AutoDisposeNotifier<AsyncValue<List<CalendarEntity>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -32,9 +32,9 @@ dependencies:
   firebase_crashlytics: ^4.3.4
   google_sign_in: ^6.2.2
 
-  # ── Local DB (Phase 2) ──
-  # isar: ^3.1.0+1          # Phase 2에서 추가
-  # isar_flutter_libs: ^3.1.0+1
+  # ── Local DB ──
+  sqflite: ^2.4.1
+  path_provider: ^2.1.5
 
   # ── Local Notifications ──
   flutter_local_notifications: ^18.0.1
@@ -43,6 +43,9 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.17
   shimmer: ^3.0.0
+
+  # ── Settings Persistence ──
+  shared_preferences: ^2.3.4
 
   # ── Utilities ──
   intl: ^0.19.0
@@ -63,7 +66,7 @@ dev_dependencies:
   riverpod_generator: ^2.6.3
   freezed: ^2.5.7
   json_serializable: ^6.9.4
-  # isar_generator: ^3.1.0+1  # Phase 2에서 추가
+  # isar_generator: ^3.1.0+1  # Isar 3.x incompatible with freezed 2.5+
 
   # ── Linting ──
   very_good_analysis: ^6.0.0
