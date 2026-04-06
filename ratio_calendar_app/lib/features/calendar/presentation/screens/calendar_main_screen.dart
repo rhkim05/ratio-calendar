@@ -146,13 +146,11 @@ class CalendarMainScreen extends ConsumerWidget {
             days: days,
             eventsByDay: mockEvents,
             calendarColors: _mockColors,
-            onEmptySlotTap: (dateTime) {
-              EventCreateSheet.show(
-                context,
-                initialDate: DateTime(dateTime.year, dateTime.month, dateTime.day),
-                initialStartTime: dateTime,
-              );
-            },
+            onEmptySlotTap: (dateTime) => EventCreateSheet.show(
+              context,
+              initialDate: DateTime(dateTime.year, dateTime.month, dateTime.day),
+              initialStartTime: dateTime,
+            ),
             onEventTap: (event) => _showEventDetail(context, event),
           ),
         ),

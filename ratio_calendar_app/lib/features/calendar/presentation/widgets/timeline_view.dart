@@ -37,8 +37,8 @@ class TimelineView extends StatefulWidget {
   /// 캘린더 ID별 색상 매핑
   final Map<String, Color> calendarColors;
 
-  /// 빈 슬롯 탭 콜백 (해당 시간으로 이벤트 생성)
-  final void Function(DateTime dateTime)? onEmptySlotTap;
+  /// 빈 슬롯 탭 콜백 (해당 시간으로 이벤트 생성, Future 반환 시 Sheet 닫힘 감지)
+  final Future<void> Function(DateTime dateTime)? onEmptySlotTap;
 
   /// 이벤트 탭 콜백 (Future 반환 시 Sheet 닫힘을 감지하여 하이라이트 해제)
   final Future<void> Function(EventEntity event)? onEventTap;
@@ -56,17 +56,46 @@ class _TimelineViewState extends State<TimelineView> {
   /// 현재 상세 Sheet가 열려있는 이벤트 ID (강조 표시용)
   String? _highlightedEventId;
 
+  /// auto-scroll 애니메이션 중 스크롤 리스너가 하이라이트를 해제하지 않도록 억제
+  bool _suppressScrollDismiss = false;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _scrollController.addListener(_onUserScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrentTime());
   }
 
   @override
+  void didUpdateWidget(covariant TimelineView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 뷰 전환 (day ↔ 3-day) 또는 날짜 변경 시 하이라이트 해제
+    if (oldWidget.days.length != widget.days.length ||
+        (oldWidget.days.isNotEmpty &&
+            widget.days.isNotEmpty &&
+            !oldWidget.days.first.isAtSameMomentAs(widget.days.first))) {
+      _clearSlotHighlight();
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onUserScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// 스크롤 시 슬롯 하이라이트 해제 (auto-scroll 중에는 억제)
+  void _onUserScroll() {
+    if (_suppressScrollDismiss) return;
+    _clearSlotHighlight();
+  }
+
+  void _clearSlotHighlight() {
+    if (_highlightedSlot != null) {
+      setState(() => _highlightedSlot = null);
+    }
   }
 
   void _scrollToCurrentTime() {
@@ -78,34 +107,64 @@ class _TimelineViewState extends State<TimelineView> {
     }
   }
 
+  /// 타임라인 블록 중심이 Sheet 위 가시 영역 중앙에 오도록 스크롤 offset 계산
+  ///
+  /// [blockTopPx]   — 블록의 타임라인 내 Y 좌표 (px)
+  /// [blockHeightPx] — 블록 높이 (px)
+  ///
+  /// 계산:
+  ///   visibleTop  = 타임라인 위젯의 화면 Y 좌표 (SafeArea + 헤더 자동 반영)
+  ///   visibleBottom = screenHeight - sheetHeight
+  ///   visibleCenter = (visibleTop + visibleBottom) / 2
+  ///   scrollTo = blockCenter - (visibleCenter - visibleTop) - downwardBias
+  void _animateScrollToBlock(double blockTopPx, double blockHeightPx) {
+    if (!_scrollController.hasClients) return;
+
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // 1) visibleTop: 타임라인 위젯의 화면 상 Y 위치
+    final renderBox = context.findRenderObject() as RenderBox;
+    final visibleTop = renderBox.localToGlobal(Offset.zero).dy;
+
+    // 2) visibleBottom: 전체 화면 높이 - Bottom Sheet 예상 높이
+    final sheetHeight = screenHeight * AppSizes.sheetEstimatedHeightFraction;
+    final visibleBottom = screenHeight - sheetHeight;
+
+    // 3) visibleCenter: 두 경계의 정중앙 (화면 좌표)
+    final visibleCenter = (visibleTop + visibleBottom) / 2;
+
+    // 4) blockCenter → targetOffset
+    final blockCenter = blockTopPx + blockHeightPx / 2;
+    const downwardBias = 50.0;
+    final targetOffset =
+        (blockCenter - (visibleCenter - visibleTop) - downwardBias).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+
+    unawaited(_scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    ));
+  }
+
   /// 이벤트 탭 시: 강조 + 스크롤 애니메이션 + onEventTap 콜백
   /// Sheet가 닫히면 (Future 완료) 강조 해제
   Future<void> _onEventTapWithScroll(EventEntity event) async {
-    // 강조 표시 ON
-    setState(() => _highlightedEventId = event.id);
+    setState(() {
+      _highlightedEventId = event.id;
+      _highlightedSlot = null; // 이벤트 탭 시 슬롯 하이라이트도 해제
+    });
 
-    if (_scrollController.hasClients) {
-      final screenHeight = MediaQuery.of(context).size.height;
-      // Bottom Sheet가 화면 하단 ~65%를 차지 → 상단 ~35%가 캘린더 보이는 영역
-      final visibleHeight = screenHeight * 0.35;
+    // 이벤트 블록의 타임라인 내 위치 & 높이
+    final startMinutes = event.startTime.hour * 60 + event.startTime.minute;
+    final blockTop = startMinutes * AppSizes.hourHeight / 60;
+    final durationMinutes =
+        event.endTime.difference(event.startTime).inMinutes;
+    final blockHeight = durationMinutes * AppSizes.hourHeight / 60;
 
-      // 이벤트 시작 시간의 타임라인 내 pixel 위치
-      final startMinutes = event.startTime.hour * 60 + event.startTime.minute;
-      final eventTop = startMinutes * AppSizes.hourHeight / 60;
-
-      // 이벤트가 보이는 영역 중앙에 오도록 offset 계산
-      final targetOffset = (eventTop - visibleHeight / 2).clamp(
-        0.0,
-        _scrollController.position.maxScrollExtent,
-      );
-
-      // 스크롤과 Sheet를 동시에 실행하므로 await하지 않음
-      unawaited(_scrollController.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      ));
-    }
+    _animateScrollToBlock(blockTop, blockHeight);
 
     // Sheet 열기 — Future 완료 = Sheet 닫힘
     await widget.onEventTap?.call(event);
@@ -131,14 +190,24 @@ class _TimelineViewState extends State<TimelineView> {
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   /// 슬롯 탭 처리: 1시간 단위 스냅
-  void _onSlotTap(DateTime date, int hour) {
+  /// 두 번째 탭 시 하이라이트 블록 중심으로 자동 스크롤 + Sheet 열기
+  Future<void> _onSlotTap(DateTime date, int hour) async {
     final slotStart = DateTime(date.year, date.month, date.day, hour);
 
     if (_highlightedSlot != null &&
         _highlightedSlot!.isAtSameMomentAs(slotStart)) {
-      // 같은 슬롯 두 번째 탭 → 이벤트 생성
-      widget.onEmptySlotTap?.call(slotStart);
-      setState(() => _highlightedSlot = null);
+      // 같은 슬롯 두 번째 탭 → 스크롤 + 이벤트 생성
+      _suppressScrollDismiss = true;
+      final blockTop = hour * AppSizes.hourHeight;
+      _animateScrollToBlock(blockTop, AppSizes.hourHeight);
+
+      await widget.onEmptySlotTap?.call(slotStart);
+
+      // Sheet 닫힘 후 하이라이트 해제
+      _suppressScrollDismiss = false;
+      if (mounted) {
+        setState(() => _highlightedSlot = null);
+      }
     } else {
       // 첫 번째 탭 또는 다른 슬롯 → 하이라이트
       setState(() => _highlightedSlot = slotStart);
@@ -149,9 +218,11 @@ class _TimelineViewState extends State<TimelineView> {
   Widget build(BuildContext context) {
     final totalHeight = 24 * AppSizes.hourHeight;
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      child: SizedBox(
+    return TapRegion(
+      onTapOutside: (_) => _clearSlotHighlight(),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: SizedBox(
         height: totalHeight,
         child: Stack(
           children: [
@@ -204,6 +275,7 @@ class _TimelineViewState extends State<TimelineView> {
           ],
         ),
       ),
+    ),
     );
   }
 }

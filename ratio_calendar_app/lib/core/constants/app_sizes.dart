@@ -38,6 +38,8 @@ abstract final class AppSizes {
   static const sheetDragHandleWidth = 36.0;
   static const sheetDragHandleHeight = 4.0;
   static const sheetMaxHeightFraction = 0.9;
+  /// 이벤트 상세 Sheet의 예상 높이 비율 (스크롤 offset 계산용)
+  static const sheetEstimatedHeightFraction = 0.6;
 
   // ── Side Menu ──
   static const sideMenuWidth = 280.0;
