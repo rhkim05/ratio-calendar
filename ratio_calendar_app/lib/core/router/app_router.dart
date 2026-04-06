@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ratio_calendar/features/auth/presentation/screens/login_screen.dart';
+import 'package:ratio_calendar/features/auth/presentation/screens/signup_screen.dart';
 import 'package:ratio_calendar/features/calendar/presentation/screens/calendar_main_screen.dart';
 import 'package:ratio_calendar/features/settings/presentation/screens/settings_screen.dart';
 import 'package:ratio_calendar/features/side_menu/presentation/screens/side_menu_screen.dart';
@@ -39,6 +41,42 @@ final appRouter = GoRouter(
             begin: const Offset(1, 0),
             end: Offset.zero,
           ).animate(animation),
+          child: child,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.login,
+      pageBuilder: (context, state) => CustomTransitionPage<void>(
+        key: state.pageKey,
+        child: const LoginScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          )),
+          child: child,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.signup,
+      pageBuilder: (context, state) => CustomTransitionPage<void>(
+        key: state.pageKey,
+        child: const SignupScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          )),
           child: child,
         ),
       ),

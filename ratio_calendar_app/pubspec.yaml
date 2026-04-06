@@ -30,6 +30,7 @@ dependencies:
   cloud_firestore: ^5.6.5
   firebase_messaging: ^15.2.4
   firebase_crashlytics: ^4.3.4
+  google_sign_in: ^6.2.2
 
   # ── Local DB (Phase 2) ──
   # isar: ^3.1.0+1          # Phase 2에서 추가
