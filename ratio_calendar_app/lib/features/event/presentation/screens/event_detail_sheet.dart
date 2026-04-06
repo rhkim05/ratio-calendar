@@ -138,8 +138,8 @@ class EventDetailSheet extends ConsumerWidget {
     Navigator.of(context).pop();
     EventCreateSheet.show(
       context,
-      initialDate: event.date,
-      initialStartTime: event.startTime,
+      isEditMode: true,
+      event: event,
     );
   }
 

@@ -4,23 +4,25 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ratio_calendar/core/constants/app_sizes.dart';
 import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/core/theme/app_typography.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 
+import 'package:ratio_calendar/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/current_time_indicator.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/event_block.dart';
 
 /// 타임라인 뷰 위젯
-/// 세로 스크롤 가능한 24시간 타임라인
+/// 세로 스크롤 가능한 24시간 타임라인 + 핀치 줌
 ///
 /// - 좌측: 시간 라벨 컬럼 (00:00 ~ 23:00)
 /// - 우측: 이벤트 블록이 겹쳐 배치되는 영역
-/// - 1시간 = 60px 높이
+/// - 핀치 줌: hourHeight를 30~150px 범위에서 동적 조절
 /// - CurrentTimeIndicator 오버레이
 /// - 빈 슬롯 탭: 1시간 단위 스냅, 더블탭으로 이벤트 생성
-class TimelineView extends StatefulWidget {
+class TimelineView extends ConsumerStatefulWidget {
   const TimelineView({
     super.key,
     required this.days,
@@ -46,10 +48,10 @@ class TimelineView extends StatefulWidget {
   final Future<void> Function(EventEntity event)? onEventTap;
 
   @override
-  State<TimelineView> createState() => _TimelineViewState();
+  ConsumerState<TimelineView> createState() => _TimelineViewState();
 }
 
-class _TimelineViewState extends State<TimelineView> {
+class _TimelineViewState extends ConsumerState<TimelineView> {
   late ScrollController _scrollController;
 
   /// 현재 상세 Sheet가 열려있는 이벤트 ID (강조 표시용)
@@ -63,6 +65,12 @@ class _TimelineViewState extends State<TimelineView> {
 
   /// auto-scroll 애니메이션 중 스크롤 리스너가 하이라이트를 해제하지 않도록 억제
   bool _suppressScrollDismiss = false;
+
+  // ── 핀치 줌 상태 ──
+  /// 핀치 시작 시점의 hourHeight (baseline)
+  double _scaleBaseHourHeight = 0;
+  /// 핀치 제스처가 활성 상태인지 여부
+  bool _isPinching = false;
 
   @override
   void initState() {
@@ -107,9 +115,50 @@ class _TimelineViewState extends State<TimelineView> {
   static int _snapTo10Min(int minutes) =>
       ((minutes / 10).round() * 10).clamp(0, 24 * 60);
 
+  // ── 핀치 줌 핸들러 ──
+
+  void _onScaleStart(ScaleStartDetails details) {
+    if (details.pointerCount < 2) return;
+    _isPinching = true;
+    _scaleBaseHourHeight = ref.read(hourHeightProvider);
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (!_isPinching || details.pointerCount < 2) return;
+
+    final hourHeightNotifier = ref.read(hourHeightProvider.notifier);
+    final oldHourHeight = ref.read(hourHeightProvider);
+
+    // 새 hourHeight 계산
+    final newHourHeight = (_scaleBaseHourHeight * details.scale)
+        .clamp(HourHeight.minHeight, HourHeight.maxHeight);
+
+    if ((newHourHeight - oldHourHeight).abs() < 0.01) return;
+
+    // Anchor point: 핀치 포컬 포인트가 가리키는 시간(분)을 유지
+    // focalPoint는 뷰포트(SingleChildScrollView) 좌표계 기준
+    final focalPointY = details.localFocalPoint.dy;
+    final currentScroll = _scrollController.offset;
+
+    // 포컬 포인트가 가리키는 시간(분) = (scrollOffset + focalY) / oldHourHeight * 60
+    final anchorMinutes = (currentScroll + focalPointY) / oldHourHeight * 60;
+
+    // hourHeight 업데이트
+    hourHeightNotifier.set(newHourHeight);
+
+    // 새 스크롤 오프셋: anchorMinutes가 같은 화면 위치에 유지되도록
+    final newScroll = anchorMinutes * newHourHeight / 60 - focalPointY;
+    final maxScroll = 24 * newHourHeight - _scrollController.position.viewportDimension;
+    _scrollController.jumpTo(newScroll.clamp(0.0, maxScroll > 0 ? maxScroll : 0.0));
+  }
+
+  void _onScaleEnd(ScaleEndDetails details) {
+    _isPinching = false;
+  }
+
   // ── 롱프레스 제스처 핸들러 ──
 
-  void _handleLongPressStart(DateTime date, int rawMinute) {
+  void _handleLongPressStart(DateTime date, int rawMinute, double hourHeight) {
     final hour = (rawMinute / 60).floor().clamp(0, 23);
     setState(() {
       _highlightedDate = date;
@@ -160,10 +209,11 @@ class _TimelineViewState extends State<TimelineView> {
 
   /// 하이라이트된 슬롯 탭 → 자동 스크롤 + Sheet 열기
   Future<void> _onHighlightedSlotTap(DateTime date) async {
+    final hourHeight = ref.read(hourHeightProvider);
     _suppressScrollDismiss = true;
-    final blockTop = _highlightStartMin * AppSizes.hourHeight / 60;
+    final blockTop = _highlightStartMin * hourHeight / 60;
     final blockHeight =
-        (_highlightEndMin - _highlightStartMin) * AppSizes.hourHeight / 60;
+        (_highlightEndMin - _highlightStartMin) * hourHeight / 60;
     _animateScrollToBlock(blockTop, blockHeight);
 
     final startTime = DateTime(
@@ -185,23 +235,15 @@ class _TimelineViewState extends State<TimelineView> {
 
   void _scrollToCurrentTime() {
     final now = DateTime.now();
+    final hourHeight = ref.read(hourHeightProvider);
     // 현재 시각 2시간 전으로 스크롤 (여유 있게 보이도록)
-    final targetOffset = ((now.hour - 2).clamp(0, 23)) * AppSizes.hourHeight;
+    final targetOffset = ((now.hour - 2).clamp(0, 23)) * hourHeight;
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(targetOffset);
     }
   }
 
   /// 타임라인 블록 중심이 Sheet 위 가시 영역 중앙에 오도록 스크롤 offset 계산
-  ///
-  /// [blockTopPx]   — 블록의 타임라인 내 Y 좌표 (px)
-  /// [blockHeightPx] — 블록 높이 (px)
-  ///
-  /// 계산:
-  ///   visibleTop  = 타임라인 위젯의 화면 Y 좌표 (SafeArea + 헤더 자동 반영)
-  ///   visibleBottom = screenHeight - sheetHeight
-  ///   visibleCenter = (visibleTop + visibleBottom) / 2
-  ///   scrollTo = blockCenter - (visibleCenter - visibleTop) - downwardBias
   void _animateScrollToBlock(double blockTopPx, double blockHeightPx) {
     if (!_scrollController.hasClients) return;
 
@@ -235,26 +277,23 @@ class _TimelineViewState extends State<TimelineView> {
   }
 
   /// 이벤트 탭 시: 강조 + 스크롤 애니메이션 + onEventTap 콜백
-  /// Sheet가 닫히면 (Future 완료) 강조 해제
   Future<void> _onEventTapWithScroll(EventEntity event) async {
+    final hourHeight = ref.read(hourHeightProvider);
     setState(() {
       _highlightedEventId = event.id;
-      _highlightedDate = null; // 이벤트 탭 시 슬롯 하이라이트도 해제
+      _highlightedDate = null;
     });
 
-    // 이벤트 블록의 타임라인 내 위치 & 높이
     final startMinutes = event.startTime.hour * 60 + event.startTime.minute;
-    final blockTop = startMinutes * AppSizes.hourHeight / 60;
+    final blockTop = startMinutes * hourHeight / 60;
     final durationMinutes =
         event.endTime.difference(event.startTime).inMinutes;
-    final blockHeight = durationMinutes * AppSizes.hourHeight / 60;
+    final blockHeight = durationMinutes * hourHeight / 60;
 
     _animateScrollToBlock(blockTop, blockHeight);
 
-    // Sheet 열기 — Future 완료 = Sheet 닫힘
     await widget.onEventTap?.call(event);
 
-    // 강조 표시 OFF
     if (mounted) {
       setState(() => _highlightedEventId = null);
     }
@@ -276,85 +315,97 @@ class _TimelineViewState extends State<TimelineView> {
 
   @override
   Widget build(BuildContext context) {
-    final totalHeight = 24 * AppSizes.hourHeight;
+    final hourHeight = ref.watch(hourHeightProvider);
+    final totalHeight = 24 * hourHeight;
 
     return TapRegion(
       onTapOutside: (_) => _clearSlotHighlight(),
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        child: SizedBox(
-        height: totalHeight,
-        child: Stack(
-          children: [
-            // 시간 라벨 + 그리드 라인
-            _TimeGrid(),
+      child: GestureDetector(
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        onScaleEnd: _onScaleEnd,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: SizedBox(
+          height: totalHeight,
+          child: Stack(
+            children: [
+              // 시간 라벨 + 그리드 라인
+              _TimeGrid(hourHeight: hourHeight),
 
-            // 이벤트 영역
-            Row(
-              children: [
-                const SizedBox(width: AppSizes.timeColumnWidth),
-                ...widget.days.map((date) {
-                  final events = widget.eventsByDay[_dateKey(date)] ?? [];
-                  final now = DateTime.now();
-                  final isToday = date.year == now.year &&
-                      date.month == now.month &&
-                      date.day == now.day;
+              // 이벤트 영역
+              Row(
+                children: [
+                  const SizedBox(width: AppSizes.timeColumnWidth),
+                  ...widget.days.map((date) {
+                    final events = widget.eventsByDay[_dateKey(date)] ?? [];
+                    final now = DateTime.now();
+                    final isToday = date.year == now.year &&
+                        date.month == now.month &&
+                        date.day == now.day;
 
-                  // 이 컬럼에 해당하는 하이라이트 범위 계산
-                  int? colHighlightStart;
-                  int? colHighlightEnd;
-                  if (_highlightedDate != null &&
-                      _highlightedDate!.year == date.year &&
-                      _highlightedDate!.month == date.month &&
-                      _highlightedDate!.day == date.day) {
-                    colHighlightStart = _highlightStartMin;
-                    colHighlightEnd = _highlightEndMin;
-                  }
+                    // 이 컬럼에 해당하는 하이라이트 범위 계산
+                    int? colHighlightStart;
+                    int? colHighlightEnd;
+                    if (_highlightedDate != null &&
+                        _highlightedDate!.year == date.year &&
+                        _highlightedDate!.month == date.month &&
+                        _highlightedDate!.day == date.day) {
+                      colHighlightStart = _highlightStartMin;
+                      colHighlightEnd = _highlightEndMin;
+                    }
 
-                  return Expanded(
-                    child: Container(
-                      color: isToday ? AppColors.todayColumnTint : null,
-                      child: _DayEventsColumn(
-                        events: events,
-                        calendarColors: widget.calendarColors,
-                        onEventTap: _onEventTapWithScroll,
-                        highlightedEventId: _highlightedEventId,
-                        date: date,
-                        highlightStartMin: colHighlightStart,
-                        highlightEndMin: colHighlightEnd,
-                        onTapAtMinute: (m) => _handleTapAt(date, m),
-                        onLongPressStartAtMinute: (m) => _handleLongPressStart(date, m),
-                        onLongPressMoveToMinute: (m) => _handleLongPressMove(date, m),
-                        onLongPressEnd: () => _handleLongPressEnd(date),
+                    return Expanded(
+                      child: Container(
+                        color: isToday ? AppColors.todayColumnTint : null,
+                        child: _DayEventsColumn(
+                          events: events,
+                          calendarColors: widget.calendarColors,
+                          onEventTap: _onEventTapWithScroll,
+                          highlightedEventId: _highlightedEventId,
+                          date: date,
+                          hourHeight: hourHeight,
+                          highlightStartMin: colHighlightStart,
+                          highlightEndMin: colHighlightEnd,
+                          onTapAtMinute: (m) => _handleTapAt(date, m),
+                          onLongPressStartAtMinute: (m) => _handleLongPressStart(date, m, hourHeight),
+                          onLongPressMoveToMinute: (m) => _handleLongPressMove(date, m),
+                          onLongPressEnd: () => _handleLongPressEnd(date),
+                        ),
                       ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+                    );
+                  }),
+                ],
+              ),
 
-            // 현재 시각 인디케이터
-            CurrentTimeIndicator(
-              columnCount: widget.days.length,
-              todayColumnIndex: _findTodayColumnIndex(),
-            ),
-          ],
+              // 현재 시각 인디케이터
+              CurrentTimeIndicator(
+                columnCount: widget.days.length,
+                todayColumnIndex: _findTodayColumnIndex(),
+                hourHeight: hourHeight,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
+      ),
     );
   }
 }
 
 /// 24시간 시간 라벨 + 수평 그리드
 class _TimeGrid extends StatelessWidget {
+  const _TimeGrid({required this.hourHeight});
+
+  final double hourHeight;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: List.generate(24, (hour) {
         final label = '${hour.toString().padLeft(2, '0')}:00';
         return SizedBox(
-          height: AppSizes.hourHeight,
+          height: hourHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -401,6 +452,7 @@ class _DayEventsColumn extends StatelessWidget {
     required this.events,
     required this.calendarColors,
     required this.date,
+    required this.hourHeight,
     this.highlightStartMin,
     this.highlightEndMin,
     this.highlightedEventId,
@@ -414,6 +466,7 @@ class _DayEventsColumn extends StatelessWidget {
   final List<EventEntity> events;
   final Map<String, Color> calendarColors;
   final DateTime date;
+  final double hourHeight;
   final int? highlightStartMin;
   final int? highlightEndMin;
   final String? highlightedEventId;
@@ -423,8 +476,8 @@ class _DayEventsColumn extends StatelessWidget {
   final void Function(int minute)? onLongPressMoveToMinute;
   final VoidCallback? onLongPressEnd;
 
-  static int _yToMinute(double dy) =>
-      (dy / AppSizes.hourHeight * 60).round().clamp(0, 24 * 60);
+  int _yToMinute(double dy) =>
+      (dy / hourHeight * 60).round().clamp(0, 24 * 60);
 
   @override
   Widget build(BuildContext context) {
@@ -448,11 +501,11 @@ class _DayEventsColumn extends StatelessWidget {
           // 하이라이트 블록 (가변 높이)
           if (hasHighlight)
             Positioned(
-              top: highlightStartMin! * AppSizes.hourHeight / 60,
+              top: highlightStartMin! * hourHeight / 60,
               left: 0,
               right: 0,
               height: (highlightEndMin! - highlightStartMin!) *
-                  AppSizes.hourHeight /
+                  hourHeight /
                   60,
               child: const _SlotHighlight(),
             ),
@@ -461,7 +514,7 @@ class _DayEventsColumn extends StatelessWidget {
           ...events.map((event) {
             final startMinutes =
                 event.startTime.hour * 60 + event.startTime.minute;
-            final topOffset = startMinutes * AppSizes.hourHeight / 60;
+            final topOffset = startMinutes * hourHeight / 60;
             final color =
                 calendarColors[event.calendarId] ?? AppColors.personal;
 
@@ -472,6 +525,7 @@ class _DayEventsColumn extends StatelessWidget {
               child: EventBlock(
                 event: event,
                 color: color,
+                hourHeight: hourHeight,
                 isHighlighted: event.id == highlightedEventId,
                 onTap: () => onEventTap?.call(event),
               ),

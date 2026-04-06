@@ -52,6 +52,25 @@ class VisibleDateRange extends _$VisibleDateRange {
       state = (start: start, end: end);
 }
 
+// ── 타임라인 줌 ──
+
+/// 타임라인 1시간 블록 높이 (px)
+/// 핀치 줌으로 30 ~ 150 범위에서 동적 조절
+/// Day View, 3-Day View 모두 공유
+@riverpod
+class HourHeight extends _$HourHeight {
+  static const double minHeight = 30.0;
+  static const double maxHeight = 150.0;
+  static const double defaultHeight = 60.0;
+
+  @override
+  double build() => defaultHeight;
+
+  void set(double value) {
+    state = value.clamp(minHeight, maxHeight);
+  }
+}
+
 // ── 데이터 ──
 
 /// 사용자의 모든 캘린더 목록

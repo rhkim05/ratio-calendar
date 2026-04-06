@@ -15,6 +15,7 @@ class CurrentTimeIndicator extends StatefulWidget {
     super.key,
     required this.columnCount,
     required this.todayColumnIndex,
+    required this.hourHeight,
   });
 
   /// 표시 중인 날짜 열 수 (3-Day: 3)
@@ -22,6 +23,9 @@ class CurrentTimeIndicator extends StatefulWidget {
 
   /// 오늘 날짜가 위치한 열 인덱스 (-1이면 오늘 안 보임)
   final int todayColumnIndex;
+
+  /// 1시간 블록 높이 (핀치 줌으로 동적 변경)
+  final double hourHeight;
 
   @override
   State<CurrentTimeIndicator> createState() => _CurrentTimeIndicatorState();
@@ -47,7 +51,7 @@ class _CurrentTimeIndicatorState extends State<CurrentTimeIndicator> {
   }
 
   double get _topOffset {
-    return (_now.hour * 60 + _now.minute) * AppSizes.hourHeight / 60;
+    return (_now.hour * 60 + _now.minute) * widget.hourHeight / 60;
   }
 
   @override

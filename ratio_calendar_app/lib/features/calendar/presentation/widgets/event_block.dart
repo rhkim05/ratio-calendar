@@ -31,12 +31,14 @@ class EventBlock extends StatelessWidget {
     super.key,
     required this.event,
     required this.color,
+    required this.hourHeight,
     this.onTap,
     this.isHighlighted = false,
   });
 
   final EventEntity event;
   final Color color;
+  final double hourHeight;
   final VoidCallback? onTap;
   final bool isHighlighted;
 
@@ -45,7 +47,7 @@ class EventBlock extends StatelessWidget {
     final durationMinutes =
         event.endTime.difference(event.startTime).inMinutes;
     const verticalInset = 2.0;
-    final rawHeight = durationMinutes * AppSizes.hourHeight / 60;
+    final rawHeight = durationMinutes * hourHeight / 60;
     final height = rawHeight - verticalInset * 2; // 상하 2px씩 축소
     final isCompact = height < 40;
 

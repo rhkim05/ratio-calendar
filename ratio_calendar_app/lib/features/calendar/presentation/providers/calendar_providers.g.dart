@@ -80,6 +80,25 @@ final visibleDateRangeProvider = AutoDisposeNotifierProvider<VisibleDateRange,
 
 typedef _$VisibleDateRange
     = AutoDisposeNotifier<({DateTime start, DateTime end})>;
+String _$hourHeightHash() => r'2b293b0a881d34cd43a3d57df321c572f265eacf';
+
+/// 타임라인 1시간 블록 높이 (px)
+/// 핀치 줌으로 30 ~ 150 범위에서 동적 조절
+/// Day View, 3-Day View 모두 공유
+///
+/// Copied from [HourHeight].
+@ProviderFor(HourHeight)
+final hourHeightProvider =
+    AutoDisposeNotifierProvider<HourHeight, double>.internal(
+  HourHeight.new,
+  name: r'hourHeightProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$hourHeightHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$HourHeight = AutoDisposeNotifier<double>;
 String _$calendarListHash() => r'bec555920ae27524461b4145f6f3b0ec17886f0d';
 
 /// 사용자의 모든 캘린더 목록

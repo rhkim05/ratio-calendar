@@ -18,6 +18,8 @@ class EventCreateSheet extends ConsumerStatefulWidget {
     this.initialDate,
     this.initialStartTime,
     this.initialEndTime,
+    this.isEditMode = false,
+    this.event,
   });
 
   /// 초기 날짜 (타임라인 탭 시 전달)
@@ -29,12 +31,20 @@ class EventCreateSheet extends ConsumerStatefulWidget {
   /// 초기 종료 시간 (타임라인 드래그 선택 시 전달)
   final DateTime? initialEndTime;
 
+  /// 편집 모드 여부
+  final bool isEditMode;
+
+  /// 편집 모드일 때 기존 이벤트 데이터
+  final EventEntity? event;
+
   /// Bottom Sheet를 표시하는 헬퍼 메서드
   static Future<void> show(
     BuildContext context, {
     DateTime? initialDate,
     DateTime? initialStartTime,
     DateTime? initialEndTime,
+    bool isEditMode = false,
+    EventEntity? event,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -44,6 +54,8 @@ class EventCreateSheet extends ConsumerStatefulWidget {
         initialDate: initialDate,
         initialStartTime: initialStartTime,
         initialEndTime: initialEndTime,
+        isEditMode: isEditMode,
+        event: event,
       ),
     );
   }
@@ -67,21 +79,34 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _selectedDate = widget.initialDate ?? DateTime(now.year, now.month, now.day);
 
-    if (widget.initialStartTime != null) {
-      _startTime = widget.initialStartTime!;
-      _endTime = widget.initialEndTime ?? _startTime.add(const Duration(hours: 1));
+    if (widget.isEditMode && widget.event != null) {
+      // 편집 모드: 기존 이벤트 데이터로 필드 초기화
+      final e = widget.event!;
+      _titleController.text = e.title;
+      _descriptionController.text = e.description ?? '';
+      _selectedDate = e.date;
+      _startTime = e.startTime;
+      _endTime = e.endTime;
+      _recurrence = e.recurrence;
+      _alert = e.alert;
     } else {
-      // 현재 시간의 다음 정시로 초기화
-      final nextHour = now.hour + 1;
-      _startTime = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        nextHour.clamp(0, 23),
-      );
-      _endTime = _startTime.add(const Duration(hours: 1));
+      // 생성 모드
+      _selectedDate = widget.initialDate ?? DateTime(now.year, now.month, now.day);
+
+      if (widget.initialStartTime != null) {
+        _startTime = widget.initialStartTime!;
+        _endTime = widget.initialEndTime ?? _startTime.add(const Duration(hours: 1));
+      } else {
+        final nextHour = now.hour + 1;
+        _startTime = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          nextHour.clamp(0, 23),
+        );
+        _endTime = _startTime.add(const Duration(hours: 1));
+      }
     }
 
     // 시트 올라온 후 제목 필드에 포커스
@@ -103,23 +128,42 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
     if (title.isEmpty) return;
 
     final now = DateTime.now();
-    final event = EventEntity(
-      id: 'local-${now.millisecondsSinceEpoch}',
-      title: title,
-      date: _selectedDate,
-      startTime: _startTime,
-      endTime: _endTime,
-      recurrence: _recurrence,
-      alert: _alert,
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      calendarId: 'sprint', // 기본 캘린더
-      createdAt: now,
-      updatedAt: now,
-    );
 
-    ref.read(localEventsProvider.notifier).add(event);
+    if (widget.isEditMode && widget.event != null) {
+      // 편집 모드: 기존 이벤트 업데이트
+      final updated = widget.event!.copyWith(
+        title: title,
+        date: _selectedDate,
+        startTime: _startTime,
+        endTime: _endTime,
+        recurrence: _recurrence,
+        alert: _alert,
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        updatedAt: now,
+      );
+      ref.read(localEventsProvider.notifier).update(updated);
+    } else {
+      // 생성 모드: 새 이벤트 추가
+      final event = EventEntity(
+        id: 'local-${now.millisecondsSinceEpoch}',
+        title: title,
+        date: _selectedDate,
+        startTime: _startTime,
+        endTime: _endTime,
+        recurrence: _recurrence,
+        alert: _alert,
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        calendarId: 'sprint',
+        createdAt: now,
+        updatedAt: now,
+      );
+      ref.read(localEventsProvider.notifier).add(event);
+    }
+
     Navigator.of(context).pop();
   }
 
@@ -315,7 +359,7 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
           ),
           const Spacer(),
           Text(
-            'NEW SCHEDULE',
+            widget.isEditMode ? 'EDIT SCHEDULE' : 'NEW SCHEDULE',
             style: AppTypography.sectionLabel.copyWith(
               letterSpacing: 2.0,
             ),
