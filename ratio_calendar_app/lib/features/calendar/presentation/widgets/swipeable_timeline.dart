@@ -3,38 +3,52 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ratio_calendar/core/constants/app_sizes.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
+import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/features/calendar/presentation/providers/calendar_providers.dart';
 
-/// 수평 스와이프로 날짜를 이동하는 타임라인 래퍼
+/// 수평 연속 스크롤 + 날짜 스냅 방식 타임라인 래퍼
 ///
-/// - 1손가락 수평 스와이프: 날짜 이동 (PageView 스타일)
-/// - 살짝 스와이프: 1일 이동
-/// - 크게 스와이프: velocity에 비례하여 여러 일 이동
-/// - 2손가락: 핀치 줌 (PageView 비활성화)
+/// - ScrollController 기반 연속 스크롤 (PageView 대신)
+/// - 각 날짜 컬럼 너비 = (화면 너비 - timeColumnWidth) / dayCount
+/// - 손을 놓으면 가장 가까운 날짜 경계에 스냅 (스프링 애니메이션)
+/// - 빠르게 스와이프하면 velocity에 비례해서 여러 일 이동 후 스냅
+/// - 2손가락: 핀치 줌 (스크롤 비활성화)
+/// - ±365일 범위 미리 생성 (무한 스크롤 느낌)
 class SwipeableTimeline extends ConsumerStatefulWidget {
   const SwipeableTimeline({
     super.key,
     required this.viewType,
-    required this.pageBuilder,
+    required this.headerBuilder,
+    required this.bodyBuilder,
   });
 
   final CalendarViewType viewType;
 
-  /// 날짜 목록과 핀치 상태를 받아 타임라인 페이지를 빌드하는 콜백
-  final Widget Function(List<DateTime> days, bool isPinching) pageBuilder;
+  /// 개별 날짜 헤더 셀 빌더
+  final Widget Function(DateTime day) headerBuilder;
+
+  /// 타임라인 본문 빌더
+  final Widget Function({
+    required ScrollController horizontalController,
+    required double dayColumnWidth,
+    required int totalDays,
+    required DateTime Function(int index) indexToDate,
+    required bool isPinching,
+  }) bodyBuilder;
 
   @override
   ConsumerState<SwipeableTimeline> createState() => _SwipeableTimelineState();
 }
 
 class _SwipeableTimelineState extends ConsumerState<SwipeableTimeline> {
-  static const int _totalPages = 100000;
-  static const int _initialPage = 50000;
+  static const int _bufferDays = 365;
 
-  late PageController _pageController;
+  ScrollController? _hController;
+  ScrollController? _headerController;
   late DateTime _baseDate;
-  bool _baseDateInitialized = false;
+  bool _initialized = false;
 
   /// 스와이프에 의한 날짜 변경인지 구분 (외부 변경과 무한루프 방지)
   bool _isSwipeNav = false;
@@ -42,69 +56,94 @@ class _SwipeableTimelineState extends ConsumerState<SwipeableTimeline> {
   /// 활성 포인터 수 (2 이상이면 핀치 줌)
   int _pointerCount = 0;
 
+  int get _dayCount => widget.viewType == CalendarViewType.day ? 1 : 3;
+  int get _totalDays => _bufferDays * 2 + 1;
+
+  double _dayColumnWidth(BuildContext context) {
+    return (MediaQuery.of(context).size.width - AppSizes.timeColumnWidth) /
+        _dayCount;
+  }
+
+  DateTime _indexToDate(int index) {
+    return DateTime(
+      _baseDate.year,
+      _baseDate.month,
+      _baseDate.day + (index - _bufferDays),
+    );
+  }
+
+  int _dateToIndex(DateTime date) {
+    final base = DateTime(_baseDate.year, _baseDate.month, _baseDate.day);
+    final target = DateTime(date.year, date.month, date.day);
+    return _bufferDays + target.difference(base).inDays;
+  }
+
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _initialPage);
     _baseDate = DateTime.now();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _hController?.removeListener(_syncHeader);
+    _hController?.dispose();
+    _headerController?.dispose();
     super.dispose();
   }
 
-  int get _dayCount => widget.viewType == CalendarViewType.day ? 1 : 3;
+  void _syncHeader() {
+    if (_headerController != null &&
+        _headerController!.hasClients &&
+        _hController != null &&
+        _hController!.hasClients) {
+      _headerController!.jumpTo(_hController!.offset);
+    }
+  }
 
-  DateTime _pageToDate(int page) {
-    return DateTime(
-      _baseDate.year,
-      _baseDate.month,
-      _baseDate.day + (page - _initialPage),
+  void _handleScrollEnd() {
+    if (_hController == null || !_hController!.hasClients) return;
+    final columnWidth = _dayColumnWidth(context);
+    final index = (_hController!.offset / columnWidth).round();
+    final startDate = _indexToDate(index);
+    final endDate = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day + _dayCount - 1,
     );
-  }
 
-  int _dateToPage(DateTime date) {
-    final base = DateTime(_baseDate.year, _baseDate.month, _baseDate.day);
-    final target = DateTime(date.year, date.month, date.day);
-    return _initialPage + target.difference(base).inDays;
-  }
-
-  void _onPageChanged(int page) {
     _isSwipeNav = true;
-    final newStart = _pageToDate(page);
-    final newEnd = newStart.add(Duration(days: _dayCount - 1));
     ref
         .read(visibleDateRangeProvider.notifier)
-        .update(start: newStart, end: newEnd);
-    ref.read(selectedDateProvider.notifier).select(newStart);
+        .update(start: startDate, end: endDate);
+    ref.read(selectedDateProvider.notifier).select(startDate);
   }
 
   @override
   Widget build(BuildContext context) {
     final visibleRange = ref.watch(visibleDateRangeProvider);
+    final columnWidth = _dayColumnWidth(context);
 
-    // 첫 빌드: baseDate 설정
-    if (!_baseDateInitialized) {
+    if (!_initialized) {
       _baseDate = visibleRange.start;
-      _baseDateInitialized = true;
+      final initialOffset = _dateToIndex(visibleRange.start) * columnWidth;
+      _hController?.removeListener(_syncHeader);
+      _hController?.dispose();
+      _headerController?.dispose();
+      _hController = ScrollController(initialScrollOffset: initialOffset);
+      _headerController = ScrollController(initialScrollOffset: initialOffset);
+      _hController!.addListener(_syncHeader);
+      _initialized = true;
     } else if (_isSwipeNav) {
-      // 스와이프에 의한 변경 → 무시 (이미 처리됨)
       _isSwipeNav = false;
     } else {
-      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등) → PageView 점프
-      final expectedPage = _dateToPage(visibleRange.start);
-      if (_pageController.hasClients) {
-        final currentPage = _pageController.page?.round() ?? _initialPage;
-        if (currentPage != expectedPage) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(expectedPage);
-            }
-          });
+      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등)
+      final targetOffset = _dateToIndex(visibleRange.start) * columnWidth;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_hController != null && _hController!.hasClients) {
+          _hController!.jumpTo(targetOffset);
         }
-      }
+      });
     }
 
     final isPinching = _pointerCount >= 2;
@@ -115,41 +154,84 @@ class _SwipeableTimelineState extends ConsumerState<SwipeableTimeline> {
           setState(() => _pointerCount = max(0, _pointerCount - 1)),
       onPointerCancel: (_) =>
           setState(() => _pointerCount = max(0, _pointerCount - 1)),
-      child: PageView.builder(
-        controller: _pageController,
-        physics: isPinching
-            ? const NeverScrollableScrollPhysics()
-            : const _VelocityPageScrollPhysics(),
-        onPageChanged: _onPageChanged,
-        itemCount: _totalPages,
-        itemBuilder: (context, index) {
-          final startDate = _pageToDate(index);
-          final days = List.generate(
-            _dayCount,
-            (i) => DateTime(
-                startDate.year, startDate.month, startDate.day + i),
-          );
-          return widget.pageBuilder(days, isPinching);
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollEndNotification &&
+              notification.metrics.axis == Axis.horizontal) {
+            _handleScrollEnd();
+          }
+          return false;
         },
+        child: Column(
+          children: [
+            // 헤더
+            _buildHeader(columnWidth),
+            // 바디
+            Expanded(
+              child: widget.bodyBuilder(
+                horizontalController: _hController!,
+                dayColumnWidth: columnWidth,
+                totalDays: _totalDays,
+                indexToDate: _indexToDate,
+                isPinching: isPinching,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(double columnWidth) {
+    final isDayView = widget.viewType == CalendarViewType.day;
+    final headerHeight =
+        isDayView ? AppSizes.dayHeaderHeight + 20 : AppSizes.dayHeaderHeight;
+
+    return Container(
+      height: headerHeight,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: AppSizes.timeColumnWidth),
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              controller: _headerController,
+              physics: const NeverScrollableScrollPhysics(),
+              itemExtent: columnWidth,
+              itemCount: _totalDays,
+              itemBuilder: (context, index) {
+                return widget.headerBuilder(_indexToDate(index));
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// 속도 기반 다중 페이지 점프를 지원하는 커스텀 ScrollPhysics
+/// 날짜 경계 스냅 스크롤 물리
 ///
-/// - 살짝 스와이프: 1페이지 (1일) 이동
-/// - 빠른 스와이프: velocity에 비례하여 여러 페이지 이동 (최대 7일)
-class _VelocityPageScrollPhysics extends ScrollPhysics {
-  const _VelocityPageScrollPhysics({super.parent});
+/// - 느린 스와이프: 1일 이동
+/// - 빠른 스와이프: velocity에 비례하여 여러 일 이동 (최대 7일)
+/// - 스프링 애니메이션으로 가장 가까운 날짜 경계에 스냅
+class DaySnapScrollPhysics extends ScrollPhysics {
+  const DaySnapScrollPhysics({required this.dayColumnWidth, super.parent});
+
+  final double dayColumnWidth;
 
   @override
-  _VelocityPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return _VelocityPageScrollPhysics(parent: buildParent(ancestor));
-  }
-
-  double _getPage(ScrollMetrics position) {
-    return position.pixels / position.viewportDimension;
+  DaySnapScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return DaySnapScrollPhysics(
+      dayColumnWidth: dayColumnWidth,
+      parent: buildParent(ancestor),
+    );
   }
 
   double _getTargetPixels(
@@ -157,26 +239,28 @@ class _VelocityPageScrollPhysics extends ScrollPhysics {
     Tolerance tolerance,
     double velocity,
   ) {
-    final page = _getPage(position);
-    final velocityPerPage = velocity / position.viewportDimension;
+    final currentDay = position.pixels / dayColumnWidth;
+    final velocityPerDay = velocity / dayColumnWidth;
 
-    double targetPage;
-    if (velocityPerPage.abs() > 2.0) {
+    double targetDay;
+    if (velocityPerDay.abs() > 2.0) {
       // 빠른 스와이프: 속도에 비례하여 여러 일 이동 (최대 7일)
-      final extraPages = (velocityPerPage * 0.15).round().clamp(-7, 7);
-      targetPage = (page.round() + extraPages).toDouble();
+      final extraDays = (velocityPerDay * 0.15).round().clamp(-7, 7);
+      targetDay = (currentDay.round() + extraDays).toDouble();
     } else if (velocity > tolerance.velocity) {
       // 오른쪽→왼쪽 (다음 날)
-      targetPage = page.ceil().toDouble();
+      targetDay = currentDay.ceil().toDouble();
     } else if (velocity < -tolerance.velocity) {
       // 왼쪽→오른쪽 (이전 날)
-      targetPage = page.floor().toDouble();
+      targetDay = currentDay.floor().toDouble();
     } else {
       // 드래그 거리 기반 스냅
-      targetPage = page.round().toDouble();
+      targetDay = currentDay.round().toDouble();
     }
 
-    return targetPage * position.viewportDimension;
+    final targetPixels = targetDay * dayColumnWidth;
+    return targetPixels.clamp(
+        position.minScrollExtent, position.maxScrollExtent);
   }
 
   @override

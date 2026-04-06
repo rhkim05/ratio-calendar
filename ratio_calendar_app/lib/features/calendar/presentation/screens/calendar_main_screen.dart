@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ratio_calendar/core/constants/app_sizes.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/core/theme/app_colors.dart';
+import 'package:ratio_calendar/core/theme/app_typography.dart';
 import 'package:ratio_calendar/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/calendar_header.dart';
-import 'package:ratio_calendar/features/calendar/presentation/widgets/day_header_row.dart';
-import 'package:ratio_calendar/features/calendar/presentation/widgets/day_view_header.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/month_grid.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/month_event_list.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/swipeable_timeline.dart';
@@ -130,35 +130,42 @@ class CalendarMainScreen extends ConsumerWidget {
   ) {
     final isDayView = viewType == CalendarViewType.day;
 
+    // Mock 이벤트는 오늘/내일만 해당 — 날짜 범위 무관하게 생성
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final mockEvents = _buildMockEvents([today, tomorrow]);
+    _mergeEvents(mockEvents, localEvents);
+
     return SwipeableTimeline(
+      key: ValueKey(viewType),
       viewType: viewType,
-      pageBuilder: (days, isPinching) {
-        final mockEvents = _buildMockEvents(days);
-        _mergeEvents(mockEvents, localEvents);
-
-        return Column(
-          children: [
-            if (isDayView)
-              DayViewHeader(date: days.first)
-            else
-              DayHeaderRow(days: days),
-
-            Expanded(
-              child: TimelineView(
-                days: days,
-                eventsByDay: mockEvents,
-                calendarColors: _mockColors,
-                isPinching: isPinching,
-                onEmptySlotTap: (startTime, endTime) => EventCreateSheet.show(
-                  context,
-                  initialDate: DateTime(startTime.year, startTime.month, startTime.day),
-                  initialStartTime: startTime,
-                  initialEndTime: endTime,
-                ),
-                onEventTap: (event) => _showEventDetail(context, event),
-              ),
-            ),
-          ],
+      headerBuilder: (day) => isDayView
+          ? _buildDayViewHeaderCell(day)
+          : _buildThreeDayHeaderCell(day),
+      bodyBuilder: ({
+        required horizontalController,
+        required dayColumnWidth,
+        required totalDays,
+        required indexToDate,
+        required isPinching,
+      }) {
+        return TimelineView(
+          horizontalController: horizontalController,
+          dayColumnWidth: dayColumnWidth,
+          totalDays: totalDays,
+          indexToDate: indexToDate,
+          eventsByDay: mockEvents,
+          calendarColors: _mockColors,
+          isPinching: isPinching,
+          onEmptySlotTap: (startTime, endTime) => EventCreateSheet.show(
+            context,
+            initialDate:
+                DateTime(startTime.year, startTime.month, startTime.day),
+            initialStartTime: startTime,
+            initialEndTime: endTime,
+          ),
+          onEventTap: (event) => _showEventDetail(context, event),
         );
       },
     );
@@ -209,6 +216,86 @@ class CalendarMainScreen extends ConsumerWidget {
 
   static String _dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  static bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  static const _dayNames3 = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  static const _dayNamesFull = [
+    'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY',
+    'FRIDAY', 'SATURDAY', 'SUNDAY',
+  ];
+
+  /// 3-Day View 헤더 셀 (요일 약어 + 날짜 숫자)
+  Widget _buildThreeDayHeaderCell(DateTime day) {
+    final isToday = _isToday(day);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          _dayNames3[day.weekday - 1],
+          style: AppTypography.dayLabel.copyWith(
+            color: isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSizes.xs),
+        Container(
+          width: AppSizes.todayHighlightSize,
+          height: AppSizes.todayHighlightSize,
+          decoration: isToday
+              ? BoxDecoration(
+                  color: AppColors.todayHighlight,
+                  borderRadius: BorderRadius.circular(6),
+                )
+              : null,
+          alignment: Alignment.center,
+          child: Text(
+            day.day.toString(),
+            style: AppTypography.dateNumber.copyWith(
+              color: isToday ? Colors.white : AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Day View 헤더 셀 (요일 풀네임 + 날짜 숫자)
+  Widget _buildDayViewHeaderCell(DateTime day) {
+    final isToday = _isToday(day);
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: AppSizes.md,
+        bottom: AppSizes.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(
+            _dayNamesFull[day.weekday - 1],
+            style: AppTypography.dayLabel.copyWith(
+              color:
+                  isToday ? AppColors.todayHighlight : AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSizes.xs),
+          Text(
+            day.day.toString(),
+            style: AppTypography.dateNumber.copyWith(
+              color: isToday ? AppColors.todayHighlight : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Month View용 Mock 이벤트 — 해당 월 전체에 샘플 데이터 배치
   Map<String, List<EventEntity>> _buildMonthMockEvents(DateTime selected) {
