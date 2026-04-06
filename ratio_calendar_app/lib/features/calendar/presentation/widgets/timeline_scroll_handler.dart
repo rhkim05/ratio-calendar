@@ -35,7 +35,7 @@ mixin TimelineScrollHandler on ConsumerState<TimelineView> {
     clearSlotHighlight();
   }
 
-  /// 현재 시각 2시간 전으로 점프
+  /// 현재 시각 2시간 전으로 점프 (초기 로딩용)
   void scrollToCurrentTime() {
     final now = DateTime.now();
     final hourHeight = ref.read(hourHeightProvider);
@@ -43,6 +43,29 @@ mixin TimelineScrollHandler on ConsumerState<TimelineView> {
     if (scrollController.hasClients) {
       scrollController.jumpTo(targetOffset);
     }
+  }
+
+  /// 현재 시각이 가시 영역 중앙에 오도록 300ms 애니메이션 스크롤
+  void animateToCurrentTimeCentered() {
+    if (!scrollController.hasClients) return;
+
+    final now = DateTime.now();
+    final hourHeight = ref.read(hourHeightProvider);
+    final currentTimePx = (now.hour * 60 + now.minute) / 60 * hourHeight;
+    final viewportHeight = scrollController.position.viewportDimension;
+    final targetOffset = (currentTimePx - viewportHeight / 2).clamp(
+      0.0,
+      scrollController.position.maxScrollExtent,
+    );
+
+    suppressScrollDismiss = true;
+    unawaited(scrollController
+        .animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        )
+        .then((_) => suppressScrollDismiss = false));
   }
 
   /// 타임라인 블록 중심이 Sheet 위 가시 영역 중앙에 오도록 스크롤

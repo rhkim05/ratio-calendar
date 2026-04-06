@@ -87,20 +87,26 @@ class _DayColumn extends StatelessWidget {
         const SizedBox(height: AppSizes.xs),
 
         // 날짜 숫자
-        Container(
+        SizedBox(
           width: AppSizes.todayHighlightSize,
           height: AppSizes.todayHighlightSize,
-          decoration: isToday
-              ? BoxDecoration(
-                  color: AppColors.todayHighlight,
-                  borderRadius: BorderRadius.circular(6),
-                )
-              : null,
-          alignment: Alignment.center,
-          child: Text(
-            dayNumber.toString(),
-            style: AppTypography.dateNumber.copyWith(
-              color: isToday ? Colors.white : AppColors.textPrimary,
+          child: Container(
+            decoration: isToday
+                ? BoxDecoration(
+                    color: AppColors.todayHighlight,
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
+            alignment: Alignment.center,
+            child: OverflowBox(
+              maxWidth: double.infinity,
+              child: Text(
+                dayNumber.toString(),
+                style: AppTypography.dateNumber.copyWith(
+                  color: isToday ? Colors.white : AppColors.textPrimary,
+                ),
+                maxLines: 1,
+              ),
             ),
           ),
         ),

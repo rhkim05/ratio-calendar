@@ -103,6 +103,13 @@ class _TimelineViewState extends ConsumerState<TimelineView>
     final hourHeight = ref.watch(hourHeightProvider);
     final totalHeight = 24 * hourHeight;
 
+    // Today 버튼 트리거 감지 → 현재 시각 중앙 정렬 스크롤
+    ref.listen(goToTodayTriggerProvider, (prev, next) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        animateToCurrentTimeCentered();
+      });
+    });
+
     return TapRegion(
       onTapOutside: (_) => clearSlotHighlight(),
       child: Listener(

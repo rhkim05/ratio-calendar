@@ -71,6 +71,18 @@ class HourHeight extends _$HourHeight {
   }
 }
 
+// ── Today 트리거 ──
+
+/// Today 버튼 탭 시 스크롤 애니메이션 트리거
+/// 값이 변경될 때마다 타임라인이 현재 시각으로 스크롤
+@riverpod
+class GoToTodayTrigger extends _$GoToTodayTrigger {
+  @override
+  int build() => 0;
+
+  void fire() => state++;
+}
+
 // ── 데이터 ──
 
 /// 사용자의 모든 캘린더 목록

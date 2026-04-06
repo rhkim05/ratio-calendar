@@ -195,23 +195,36 @@ class CalendarMainScreen extends ConsumerWidget {
   void _goToToday(WidgetRef ref, CalendarViewType viewType) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    ref.read(selectedDateProvider.notifier).select(today);
 
-    switch (viewType) {
-      case CalendarViewType.day:
-        ref.read(visibleDateRangeProvider.notifier).update(
-              start: today, end: today,
-            );
-      case CalendarViewType.threeDay:
-        ref.read(visibleDateRangeProvider.notifier).update(
-              start: today, end: today.add(const Duration(days: 2)),
-            );
-      case CalendarViewType.month:
-        // month view는 selectedDate만 갱신하면 됨
-        break;
-      default:
-        break;
-    }
+    // 1. 핀치 줌 기본값으로 리셋 (레이아웃 변경 유발)
+    ref.read(hourHeightProvider.notifier).set(HourHeight.defaultHeight);
+
+    // 2. 레이아웃 안정 후 날짜 이동 + 스크롤 애니메이션 동시 실행
+    //    iOS에서 hourHeight 변경과 animateTo가 같은 프레임에 겹치면
+    //    수평 스크롤 애니메이션이 취소되므로, 한 프레임 대기 후 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(selectedDateProvider.notifier).select(today);
+
+      switch (viewType) {
+        case CalendarViewType.day:
+          ref.read(visibleDateRangeProvider.notifier).update(
+                start: today, end: today,
+              );
+        case CalendarViewType.threeDay:
+          ref.read(visibleDateRangeProvider.notifier).update(
+                start: today, end: today.add(const Duration(days: 2)),
+              );
+        case CalendarViewType.month:
+          break;
+        default:
+          break;
+      }
+
+      // 수직 스크롤 트리거 (수평 animateTo와 동시 실행됨)
+      if (viewType != CalendarViewType.month) {
+        ref.read(goToTodayTriggerProvider.notifier).fire();
+      }
+    });
   }
 
   static String _dateKey(DateTime date) =>
@@ -244,20 +257,26 @@ class CalendarMainScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSizes.xs),
-        Container(
+        SizedBox(
           width: AppSizes.todayHighlightSize,
           height: AppSizes.todayHighlightSize,
-          decoration: isToday
-              ? BoxDecoration(
-                  color: AppColors.todayHighlight,
-                  borderRadius: BorderRadius.circular(6),
-                )
-              : null,
-          alignment: Alignment.center,
-          child: Text(
-            day.day.toString(),
-            style: AppTypography.dateNumber.copyWith(
-              color: isToday ? Colors.white : AppColors.textPrimary,
+          child: Container(
+            decoration: isToday
+                ? BoxDecoration(
+                    color: AppColors.todayHighlight,
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
+            alignment: Alignment.center,
+            child: OverflowBox(
+              maxWidth: double.infinity,
+              child: Text(
+                day.day.toString(),
+                style: AppTypography.dateNumber.copyWith(
+                  color: isToday ? Colors.white : AppColors.textPrimary,
+                ),
+                maxLines: 1,
+              ),
             ),
           ),
         ),
@@ -265,7 +284,7 @@ class CalendarMainScreen extends ConsumerWidget {
     );
   }
 
-  /// Day View 헤더 셀 (요일 풀네임 + 날짜 숫자)
+  /// Day View 헤더 셀 (요일 풀네임 + 날짜 숫자, today 하이라이트는 3-Day View와 동일)
   Widget _buildDayViewHeaderCell(DateTime day) {
     final isToday = _isToday(day);
     return Padding(
@@ -286,10 +305,27 @@ class CalendarMainScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSizes.xs),
-          Text(
-            day.day.toString(),
-            style: AppTypography.dateNumber.copyWith(
-              color: isToday ? AppColors.todayHighlight : AppColors.textPrimary,
+          SizedBox(
+            width: AppSizes.todayHighlightSize,
+            height: AppSizes.todayHighlightSize,
+            child: Container(
+              decoration: isToday
+                  ? BoxDecoration(
+                      color: AppColors.todayHighlight,
+                      borderRadius: BorderRadius.circular(6),
+                    )
+                  : null,
+              alignment: Alignment.center,
+              child: OverflowBox(
+                maxWidth: double.infinity,
+                child: Text(
+                  day.day.toString(),
+                  style: AppTypography.dateNumber.copyWith(
+                    color: isToday ? Colors.white : AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                ),
+              ),
             ),
           ),
         ],

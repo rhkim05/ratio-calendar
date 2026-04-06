@@ -137,11 +137,15 @@ class _SwipeableTimelineState extends ConsumerState<SwipeableTimeline> {
     } else if (_isSwipeNav) {
       _isSwipeNav = false;
     } else {
-      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등)
+      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등) — 300ms 애니메이션
       final targetOffset = _dateToIndex(visibleRange.start) * columnWidth;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_hController != null && _hController!.hasClients) {
-          _hController!.jumpTo(targetOffset);
+          _hController!.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         }
       });
     }

@@ -99,6 +99,25 @@ final hourHeightProvider =
 );
 
 typedef _$HourHeight = AutoDisposeNotifier<double>;
+String _$goToTodayTriggerHash() => r'e6598015b1d39698bea4113fe033389e00f24aa4';
+
+/// Today 버튼 탭 시 스크롤 애니메이션 트리거
+/// 값이 변경될 때마다 타임라인이 현재 시각으로 스크롤
+///
+/// Copied from [GoToTodayTrigger].
+@ProviderFor(GoToTodayTrigger)
+final goToTodayTriggerProvider =
+    AutoDisposeNotifierProvider<GoToTodayTrigger, int>.internal(
+  GoToTodayTrigger.new,
+  name: r'goToTodayTriggerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$goToTodayTriggerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$GoToTodayTrigger = AutoDisposeNotifier<int>;
 String _$calendarListHash() => r'bec555920ae27524461b4145f6f3b0ec17886f0d';
 
 /// 사용자의 모든 캘린더 목록
