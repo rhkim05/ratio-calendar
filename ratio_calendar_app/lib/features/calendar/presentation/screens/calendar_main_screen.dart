@@ -8,6 +8,7 @@ import 'package:ratio_calendar/features/calendar/presentation/widgets/day_header
 import 'package:ratio_calendar/features/calendar/presentation/widgets/day_view_header.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/month_grid.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/month_event_list.dart';
+import 'package:ratio_calendar/features/calendar/presentation/widgets/swipeable_timeline.dart';
 import 'package:ratio_calendar/features/calendar/presentation/widgets/timeline_view.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/presentation/providers/event_providers.dart';
@@ -128,34 +129,38 @@ class CalendarMainScreen extends ConsumerWidget {
     Map<String, List<EventEntity>> localEvents,
   ) {
     final isDayView = viewType == CalendarViewType.day;
-    final dayCount = isDayView ? 1 : 3;
-    final days = _generateDays(visibleRange.start, dayCount);
-    final mockEvents = _buildMockEvents(days);
-    // 로컬 이벤트를 mock 이벤트에 머지
-    _mergeEvents(mockEvents, localEvents);
 
-    return Column(
-      children: [
-        if (isDayView)
-          DayViewHeader(date: days.first)
-        else
-          DayHeaderRow(days: days),
+    return SwipeableTimeline(
+      viewType: viewType,
+      pageBuilder: (days, isPinching) {
+        final mockEvents = _buildMockEvents(days);
+        _mergeEvents(mockEvents, localEvents);
 
-        Expanded(
-          child: TimelineView(
-            days: days,
-            eventsByDay: mockEvents,
-            calendarColors: _mockColors,
-            onEmptySlotTap: (startTime, endTime) => EventCreateSheet.show(
-              context,
-              initialDate: DateTime(startTime.year, startTime.month, startTime.day),
-              initialStartTime: startTime,
-              initialEndTime: endTime,
+        return Column(
+          children: [
+            if (isDayView)
+              DayViewHeader(date: days.first)
+            else
+              DayHeaderRow(days: days),
+
+            Expanded(
+              child: TimelineView(
+                days: days,
+                eventsByDay: mockEvents,
+                calendarColors: _mockColors,
+                isPinching: isPinching,
+                onEmptySlotTap: (startTime, endTime) => EventCreateSheet.show(
+                  context,
+                  initialDate: DateTime(startTime.year, startTime.month, startTime.day),
+                  initialStartTime: startTime,
+                  initialEndTime: endTime,
+                ),
+                onEventTap: (event) => _showEventDetail(context, event),
+              ),
             ),
-            onEventTap: (event) => _showEventDetail(context, event),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -204,13 +209,6 @@ class CalendarMainScreen extends ConsumerWidget {
 
   static String _dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-  List<DateTime> _generateDays(DateTime start, int count) {
-    return List.generate(
-      count,
-      (i) => DateTime(start.year, start.month, start.day + i),
-    );
-  }
 
   /// Month View용 Mock 이벤트 — 해당 월 전체에 샘플 데이터 배치
   Map<String, List<EventEntity>> _buildMonthMockEvents(DateTime selected) {
