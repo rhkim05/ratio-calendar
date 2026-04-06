@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' show min, max;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ratio_calendar/core/constants/app_sizes.dart';
 import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/core/theme/app_typography.dart';
@@ -37,8 +39,8 @@ class TimelineView extends StatefulWidget {
   /// 캘린더 ID별 색상 매핑
   final Map<String, Color> calendarColors;
 
-  /// 빈 슬롯 탭 콜백 (해당 시간으로 이벤트 생성, Future 반환 시 Sheet 닫힘 감지)
-  final Future<void> Function(DateTime dateTime)? onEmptySlotTap;
+  /// 빈 슬롯 탭 콜백 (시작/종료 시간으로 이벤트 생성, Future 반환 시 Sheet 닫힘 감지)
+  final Future<void> Function(DateTime startTime, DateTime endTime)? onEmptySlotTap;
 
   /// 이벤트 탭 콜백 (Future 반환 시 Sheet 닫힘을 감지하여 하이라이트 해제)
   final Future<void> Function(EventEntity event)? onEventTap;
@@ -50,11 +52,14 @@ class TimelineView extends StatefulWidget {
 class _TimelineViewState extends State<TimelineView> {
   late ScrollController _scrollController;
 
-  /// 현재 하이라이트된 슬롯 (1시간 블록의 시작 시각, null이면 없음)
-  DateTime? _highlightedSlot;
-
   /// 현재 상세 Sheet가 열려있는 이벤트 ID (강조 표시용)
   String? _highlightedEventId;
+
+  /// 슬롯 하이라이트 상태 — 롱프레스로 활성화, 드래그로 범위 조절
+  DateTime? _highlightedDate;
+  int _highlightStartMin = 0; // 분 단위 (0–1440)
+  int _highlightEndMin = 0;
+  int _longPressAnchorMin = 0; // 드래그 기준점
 
   /// auto-scroll 애니메이션 중 스크롤 리스너가 하이라이트를 해제하지 않도록 억제
   bool _suppressScrollDismiss = false;
@@ -93,8 +98,88 @@ class _TimelineViewState extends State<TimelineView> {
   }
 
   void _clearSlotHighlight() {
-    if (_highlightedSlot != null) {
-      setState(() => _highlightedSlot = null);
+    if (_highlightedDate != null) {
+      setState(() => _highlightedDate = null);
+    }
+  }
+
+  // ── 10분 스냅 헬퍼 ──
+  static int _snapTo10Min(int minutes) =>
+      ((minutes / 10).round() * 10).clamp(0, 24 * 60);
+
+  // ── 롱프레스 제스처 핸들러 ──
+
+  void _handleLongPressStart(DateTime date, int rawMinute) {
+    final hour = (rawMinute / 60).floor().clamp(0, 23);
+    setState(() {
+      _highlightedDate = date;
+      _highlightStartMin = hour * 60;
+      _highlightEndMin = min((hour + 1) * 60, 24 * 60);
+      _longPressAnchorMin = _snapTo10Min(rawMinute);
+    });
+    HapticFeedback.mediumImpact();
+  }
+
+  void _handleLongPressMove(DateTime date, int rawMinute) {
+    if (_highlightedDate == null) return;
+    final snapped = _snapTo10Min(rawMinute);
+    setState(() {
+      _highlightStartMin = min(_longPressAnchorMin, snapped);
+      _highlightEndMin = max(_longPressAnchorMin, snapped);
+      if (_highlightEndMin - _highlightStartMin < 10) {
+        _highlightEndMin = _highlightStartMin + 10;
+      }
+    });
+  }
+
+  /// 빈 영역 탭: 하이라이트 범위 내면 이벤트 생성, 밖이면 1시간 하이라이트
+  void _handleTapAt(DateTime date, int rawMinute) {
+    if (_highlightedDate != null &&
+        _highlightedDate!.year == date.year &&
+        _highlightedDate!.month == date.month &&
+        _highlightedDate!.day == date.day &&
+        rawMinute >= _highlightStartMin &&
+        rawMinute < _highlightEndMin) {
+      _onHighlightedSlotTap(date);
+    } else {
+      // 첫 번째 탭 또는 다른 슬롯 → 1시간 하이라이트
+      final hour = (rawMinute / 60).floor().clamp(0, 23);
+      setState(() {
+        _highlightedDate = date;
+        _highlightStartMin = hour * 60;
+        _highlightEndMin = min((hour + 1) * 60, 24 * 60);
+      });
+    }
+  }
+
+  /// 롱프레스 종료 → 바로 Sheet 열기
+  void _handleLongPressEnd(DateTime date) {
+    if (_highlightedDate == null) return;
+    _onHighlightedSlotTap(date);
+  }
+
+  /// 하이라이트된 슬롯 탭 → 자동 스크롤 + Sheet 열기
+  Future<void> _onHighlightedSlotTap(DateTime date) async {
+    _suppressScrollDismiss = true;
+    final blockTop = _highlightStartMin * AppSizes.hourHeight / 60;
+    final blockHeight =
+        (_highlightEndMin - _highlightStartMin) * AppSizes.hourHeight / 60;
+    _animateScrollToBlock(blockTop, blockHeight);
+
+    final startTime = DateTime(
+      date.year, date.month, date.day,
+      _highlightStartMin ~/ 60, _highlightStartMin % 60,
+    );
+    final endTime = DateTime(
+      date.year, date.month, date.day,
+      _highlightEndMin ~/ 60, _highlightEndMin % 60,
+    );
+
+    await widget.onEmptySlotTap?.call(startTime, endTime);
+
+    _suppressScrollDismiss = false;
+    if (mounted) {
+      setState(() => _highlightedDate = null);
     }
   }
 
@@ -154,7 +239,7 @@ class _TimelineViewState extends State<TimelineView> {
   Future<void> _onEventTapWithScroll(EventEntity event) async {
     setState(() {
       _highlightedEventId = event.id;
-      _highlightedSlot = null; // 이벤트 탭 시 슬롯 하이라이트도 해제
+      _highlightedDate = null; // 이벤트 탭 시 슬롯 하이라이트도 해제
     });
 
     // 이벤트 블록의 타임라인 내 위치 & 높이
@@ -189,31 +274,6 @@ class _TimelineViewState extends State<TimelineView> {
   String _dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  /// 슬롯 탭 처리: 1시간 단위 스냅
-  /// 두 번째 탭 시 하이라이트 블록 중심으로 자동 스크롤 + Sheet 열기
-  Future<void> _onSlotTap(DateTime date, int hour) async {
-    final slotStart = DateTime(date.year, date.month, date.day, hour);
-
-    if (_highlightedSlot != null &&
-        _highlightedSlot!.isAtSameMomentAs(slotStart)) {
-      // 같은 슬롯 두 번째 탭 → 스크롤 + 이벤트 생성
-      _suppressScrollDismiss = true;
-      final blockTop = hour * AppSizes.hourHeight;
-      _animateScrollToBlock(blockTop, AppSizes.hourHeight);
-
-      await widget.onEmptySlotTap?.call(slotStart);
-
-      // Sheet 닫힘 후 하이라이트 해제
-      _suppressScrollDismiss = false;
-      if (mounted) {
-        setState(() => _highlightedSlot = null);
-      }
-    } else {
-      // 첫 번째 탭 또는 다른 슬롯 → 하이라이트
-      setState(() => _highlightedSlot = slotStart);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final totalHeight = 24 * AppSizes.hourHeight;
@@ -240,13 +300,15 @@ class _TimelineViewState extends State<TimelineView> {
                       date.month == now.month &&
                       date.day == now.day;
 
-                  // 이 컬럼에 해당하는 하이라이트 시간 계산
-                  int? highlightedHour;
-                  if (_highlightedSlot != null &&
-                      _highlightedSlot!.year == date.year &&
-                      _highlightedSlot!.month == date.month &&
-                      _highlightedSlot!.day == date.day) {
-                    highlightedHour = _highlightedSlot!.hour;
+                  // 이 컬럼에 해당하는 하이라이트 범위 계산
+                  int? colHighlightStart;
+                  int? colHighlightEnd;
+                  if (_highlightedDate != null &&
+                      _highlightedDate!.year == date.year &&
+                      _highlightedDate!.month == date.month &&
+                      _highlightedDate!.day == date.day) {
+                    colHighlightStart = _highlightStartMin;
+                    colHighlightEnd = _highlightEndMin;
                   }
 
                   return Expanded(
@@ -258,8 +320,12 @@ class _TimelineViewState extends State<TimelineView> {
                         onEventTap: _onEventTapWithScroll,
                         highlightedEventId: _highlightedEventId,
                         date: date,
-                        highlightedHour: highlightedHour,
-                        onSlotTap: (hour) => _onSlotTap(date, hour),
+                        highlightStartMin: colHighlightStart,
+                        highlightEndMin: colHighlightEnd,
+                        onTapAtMinute: (m) => _handleTapAt(date, m),
+                        onLongPressStartAtMinute: (m) => _handleLongPressStart(date, m),
+                        onLongPressMoveToMinute: (m) => _handleLongPressMove(date, m),
+                        onLongPressEnd: () => _handleLongPressEnd(date),
                       ),
                     ),
                   );
@@ -335,39 +401,59 @@ class _DayEventsColumn extends StatelessWidget {
     required this.events,
     required this.calendarColors,
     required this.date,
-    required this.onSlotTap,
-    this.highlightedHour,
+    this.highlightStartMin,
+    this.highlightEndMin,
     this.highlightedEventId,
     this.onEventTap,
+    this.onTapAtMinute,
+    this.onLongPressStartAtMinute,
+    this.onLongPressMoveToMinute,
+    this.onLongPressEnd,
   });
 
   final List<EventEntity> events;
   final Map<String, Color> calendarColors;
   final DateTime date;
-  final int? highlightedHour;
+  final int? highlightStartMin;
+  final int? highlightEndMin;
   final String? highlightedEventId;
-  final void Function(int hour) onSlotTap;
   final void Function(EventEntity)? onEventTap;
+  final void Function(int minute)? onTapAtMinute;
+  final void Function(int minute)? onLongPressStartAtMinute;
+  final void Function(int minute)? onLongPressMoveToMinute;
+  final VoidCallback? onLongPressEnd;
+
+  static int _yToMinute(double dy) =>
+      (dy / AppSizes.hourHeight * 60).round().clamp(0, 24 * 60);
 
   @override
   Widget build(BuildContext context) {
+    final hasHighlight =
+        highlightStartMin != null && highlightEndMin != null;
+
     return GestureDetector(
       onTapUp: (details) {
-        // 1시간 단위 스냅
-        final hour =
-            (details.localPosition.dy / AppSizes.hourHeight).floor().clamp(0, 23);
-        onSlotTap(hour);
+        onTapAtMinute?.call(_yToMinute(details.localPosition.dy));
       },
+      onLongPressStart: (details) {
+        onLongPressStartAtMinute?.call(_yToMinute(details.localPosition.dy));
+      },
+      onLongPressMoveUpdate: (details) {
+        onLongPressMoveToMinute?.call(_yToMinute(details.localPosition.dy));
+      },
+      onLongPressEnd: (_) => onLongPressEnd?.call(),
       behavior: HitTestBehavior.translucent,
       child: Stack(
         children: [
-          // 하이라이트 블록
-          if (highlightedHour != null)
+          // 하이라이트 블록 (가변 높이)
+          if (hasHighlight)
             Positioned(
-              top: highlightedHour! * AppSizes.hourHeight,
+              top: highlightStartMin! * AppSizes.hourHeight / 60,
               left: 0,
               right: 0,
-              height: AppSizes.hourHeight,
+              height: (highlightEndMin! - highlightStartMin!) *
+                  AppSizes.hourHeight /
+                  60,
               child: const _SlotHighlight(),
             ),
 

@@ -17,6 +17,7 @@ class EventCreateSheet extends ConsumerStatefulWidget {
     super.key,
     this.initialDate,
     this.initialStartTime,
+    this.initialEndTime,
   });
 
   /// 초기 날짜 (타임라인 탭 시 전달)
@@ -25,11 +26,15 @@ class EventCreateSheet extends ConsumerStatefulWidget {
   /// 초기 시작 시간 (타임라인 탭 시 전달)
   final DateTime? initialStartTime;
 
+  /// 초기 종료 시간 (타임라인 드래그 선택 시 전달)
+  final DateTime? initialEndTime;
+
   /// Bottom Sheet를 표시하는 헬퍼 메서드
   static Future<void> show(
     BuildContext context, {
     DateTime? initialDate,
     DateTime? initialStartTime,
+    DateTime? initialEndTime,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -38,6 +43,7 @@ class EventCreateSheet extends ConsumerStatefulWidget {
       builder: (_) => EventCreateSheet(
         initialDate: initialDate,
         initialStartTime: initialStartTime,
+        initialEndTime: initialEndTime,
       ),
     );
   }
@@ -65,7 +71,7 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
 
     if (widget.initialStartTime != null) {
       _startTime = widget.initialStartTime!;
-      _endTime = _startTime.add(const Duration(hours: 1));
+      _endTime = widget.initialEndTime ?? _startTime.add(const Duration(hours: 1));
     } else {
       // 현재 시간의 다음 정시로 초기화
       final nextHour = now.hour + 1;
