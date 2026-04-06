@@ -1,0 +1,3 @@
+- [Project Setup Progress](project_setup_progress.md) — Phase A 초기 설정 완료 현황 (Firebase, Entity, Provider, Router)
+- [User Profile](user_profile.md) — 한국어 소통 Flutter 개발자, 체계적 문서 기반 진행
+- [Flutter SDK Path](reference_flutter_path.md) — Flutter 절대경로 `/Users/dev/Code/flutter/bin/flutter` (PATH 미등록)

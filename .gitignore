@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Flutter/Dart
+build/
+.dart_tool/
+.packages
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Firebase (API 키 포함!)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Android
+android/local.properties
+android/.gradle/
+*.jks
+*.keystore
+key.properties
+
+# iOS
+ios/Podfile.lock
+ios/Pods/
+
+# 환경변수 / 비밀키
+.env*
+*.pem
+*.p12
+secrets.*
+credentials.*

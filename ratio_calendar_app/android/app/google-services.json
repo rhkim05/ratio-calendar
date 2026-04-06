@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "688137699806",
+    "project_id": "ratio-calendar-f5a8f",
+    "storage_bucket": "ratio-calendar-f5a8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:688137699806:android:09fb31d7d0b4143f1f5d4f",
+        "android_client_info": {
+          "package_name": "com.ratiocalendar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "688137699806-56vkiie89m8bprpdhivis0nj4f90nr06.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbxyar9MxI7RQ4l8KbDjBbWH15f03Q1Wc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "688137699806-56vkiie89m8bprpdhivis0nj4f90nr06.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "688137699806-ulhd0jskfpmiehl2udiavm010tt1tr9g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ratiocalendar.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

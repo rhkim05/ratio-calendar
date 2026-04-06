@@ -1,0 +1,90 @@
+name: ratio_calendar
+description: "Ratio Calendar — 미니멀리즘 캘린더 앱. Less, but better."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State Management ──
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # ── Routing ──
+  go_router: ^14.8.0
+
+  # ── Calendar ──
+  table_calendar: ^3.1.3
+
+  # ── Animation ──
+  flutter_animate: ^4.5.2
+
+  # ── Firebase ──
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
+  cloud_firestore: ^5.6.5
+  firebase_messaging: ^15.2.4
+  firebase_crashlytics: ^4.3.4
+
+  # ── Local DB (Phase 2) ──
+  # isar: ^3.1.0+1          # Phase 2에서 추가
+  # isar_flutter_libs: ^3.1.0+1
+
+  # ── Local Notifications ──
+  flutter_local_notifications: ^18.0.1
+
+  # ── UI / UX ──
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.17
+  shimmer: ^3.0.0
+
+  # ── Utilities ──
+  intl: ^0.19.0
+  uuid: ^4.5.1
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  equatable: ^2.0.7
+
+  # ── Platform ──
+  home_widget: ^0.7.0          # Phase 2: 홈 화면 위젯
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # ── Code Generation ──
+  build_runner: ^2.4.14
+  riverpod_generator: ^2.6.3
+  freezed: ^2.5.7
+  json_serializable: ^6.9.4
+  # isar_generator: ^3.1.0+1  # Phase 2에서 추가
+
+  # ── Linting ──
+  very_good_analysis: ^6.0.0
+
+  # ── Testing ──
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/fonts/
+    - assets/images/
+
+  # fonts:
+  #   - family: SF Pro Display
+  #     fonts:
+  #       - asset: assets/fonts/SFProDisplay-Regular.otf
+  #       - asset: assets/fonts/SFProDisplay-Medium.otf
+  #         weight: 500
+  #       - asset: assets/fonts/SFProDisplay-Semibold.otf
+  #         weight: 600
+  #       - asset: assets/fonts/SFProDisplay-Bold.otf
+  #         weight: 700

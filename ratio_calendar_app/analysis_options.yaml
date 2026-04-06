@@ -1,0 +1,15 @@
+include: package:very_good_analysis/analysis_options.yaml
+
+linter:
+  rules:
+    public_member_api_docs: false    # 개발 초기에는 완화
+    lines_longer_than_80_chars: false
+    flutter_style_todos: true
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/generated/**"
+  errors:
+    invalid_annotation_target: ignore
