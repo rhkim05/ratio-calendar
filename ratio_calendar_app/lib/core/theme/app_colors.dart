@@ -33,12 +33,16 @@ abstract final class AppColors {
   // DESIGN.md §5: "desaturated bg tints (blue-50) + 4px left border (blue-600)"
   static const blueBorder = Color(0xFF2563EB);            // Sprint Planning 보더 (blue-600)
   static const blueBackground = Color(0xFFEFF6FF);        // Sprint Planning 배경 (blue-50)
+  static const blueBackgroundHighlight = Color(0xFFDBEAFE); // Sprint Planning 강조 (blue-100)
   static const tealBorder = Color(0xFF0D9488);            // Design Sync 보더 (teal-600)
   static const tealBackground = Color(0xFFF0FDFA);        // Design Sync 배경 (teal-50)
+  static const tealBackgroundHighlight = Color(0xFFCCFBF1); // Design Sync 강조 (teal-100)
   static const amberBorder = Color(0xFFD97706);           // Deep Work 보더 (amber-600)
   static const amberBackground = Color(0xFFFFFBEB);       // Deep Work 배경 (amber-50)
+  static const amberBackgroundHighlight = Color(0xFFFEF3C7); // Deep Work 강조 (amber-100)
   static const orangeBorder = Color(0xFFEA580C);          // Team Standup 보더 (orange-600)
   static const orangeBackground = Color(0xFFFFF7ED);      // Team Standup 배경 (orange-50)
+  static const orangeBackgroundHighlight = Color(0xFFFFEDD5); // Team Standup 강조 (orange-100)
 
   // ── Today Highlight ──
   static const todayHighlight = Color(0xFF003049);

@@ -160,9 +160,9 @@ class CalendarMainScreen extends ConsumerWidget {
     );
   }
 
-  void _showEventDetail(BuildContext context, EventEntity event) {
+  Future<void> _showEventDetail(BuildContext context, EventEntity event) {
     final color = _mockColors[event.calendarId] ?? AppColors.personal;
-    EventDetailSheet.show(
+    return EventDetailSheet.show(
       context,
       event: event,
       calendarColor: color,

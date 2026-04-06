@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -39,8 +40,8 @@ class TimelineView extends StatefulWidget {
   /// 빈 슬롯 탭 콜백 (해당 시간으로 이벤트 생성)
   final void Function(DateTime dateTime)? onEmptySlotTap;
 
-  /// 이벤트 탭 콜백
-  final void Function(EventEntity event)? onEventTap;
+  /// 이벤트 탭 콜백 (Future 반환 시 Sheet 닫힘을 감지하여 하이라이트 해제)
+  final Future<void> Function(EventEntity event)? onEventTap;
 
   @override
   State<TimelineView> createState() => _TimelineViewState();
@@ -51,6 +52,9 @@ class _TimelineViewState extends State<TimelineView> {
 
   /// 현재 하이라이트된 슬롯 (1시간 블록의 시작 시각, null이면 없음)
   DateTime? _highlightedSlot;
+
+  /// 현재 상세 Sheet가 열려있는 이벤트 ID (강조 표시용)
+  String? _highlightedEventId;
 
   @override
   void initState() {
@@ -71,6 +75,44 @@ class _TimelineViewState extends State<TimelineView> {
     final targetOffset = ((now.hour - 2).clamp(0, 23)) * AppSizes.hourHeight;
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(targetOffset);
+    }
+  }
+
+  /// 이벤트 탭 시: 강조 + 스크롤 애니메이션 + onEventTap 콜백
+  /// Sheet가 닫히면 (Future 완료) 강조 해제
+  Future<void> _onEventTapWithScroll(EventEntity event) async {
+    // 강조 표시 ON
+    setState(() => _highlightedEventId = event.id);
+
+    if (_scrollController.hasClients) {
+      final screenHeight = MediaQuery.of(context).size.height;
+      // Bottom Sheet가 화면 하단 ~65%를 차지 → 상단 ~35%가 캘린더 보이는 영역
+      final visibleHeight = screenHeight * 0.35;
+
+      // 이벤트 시작 시간의 타임라인 내 pixel 위치
+      final startMinutes = event.startTime.hour * 60 + event.startTime.minute;
+      final eventTop = startMinutes * AppSizes.hourHeight / 60;
+
+      // 이벤트가 보이는 영역 중앙에 오도록 offset 계산
+      final targetOffset = (eventTop - visibleHeight / 2).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+
+      // 스크롤과 Sheet를 동시에 실행하므로 await하지 않음
+      unawaited(_scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ));
+    }
+
+    // Sheet 열기 — Future 완료 = Sheet 닫힘
+    await widget.onEventTap?.call(event);
+
+    // 강조 표시 OFF
+    if (mounted) {
+      setState(() => _highlightedEventId = null);
     }
   }
 
@@ -142,7 +184,8 @@ class _TimelineViewState extends State<TimelineView> {
                       child: _DayEventsColumn(
                         events: events,
                         calendarColors: widget.calendarColors,
-                        onEventTap: widget.onEventTap,
+                        onEventTap: _onEventTapWithScroll,
+                        highlightedEventId: _highlightedEventId,
                         date: date,
                         highlightedHour: highlightedHour,
                         onSlotTap: (hour) => _onSlotTap(date, hour),
@@ -222,6 +265,7 @@ class _DayEventsColumn extends StatelessWidget {
     required this.date,
     required this.onSlotTap,
     this.highlightedHour,
+    this.highlightedEventId,
     this.onEventTap,
   });
 
@@ -229,6 +273,7 @@ class _DayEventsColumn extends StatelessWidget {
   final Map<String, Color> calendarColors;
   final DateTime date;
   final int? highlightedHour;
+  final String? highlightedEventId;
   final void Function(int hour) onSlotTap;
   final void Function(EventEntity)? onEventTap;
 
@@ -269,6 +314,7 @@ class _DayEventsColumn extends StatelessWidget {
               child: EventBlock(
                 event: event,
                 color: color,
+                isHighlighted: event.id == highlightedEventId,
                 onTap: () => onEventTap?.call(event),
               ),
             );

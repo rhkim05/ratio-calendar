@@ -216,6 +216,13 @@ FAB 버튼 누르면 아래에서 올라와야 해.
 ```
 일정 상세 Bottom Sheet도 구현해줘.
 이벤트 탭하면 상세 정보가 보이고, 편집/삭제 버튼이 있어야 해.
+
+추가 기능 — 자동 스크롤 포커스:
+이벤트 탭 시 Bottom Sheet가 올라오면서 동시에 뒤쪽 캘린더 타임라인이
+해당 이벤트가 Sheet 위 보이는 영역(상단 30~40%)의 중앙에 오도록
+부드럽게 자동 스크롤되게 해줘.
+ScrollController.animateTo()로 이벤트의 시간 위치 기준 offset을 계산해서
+duration 300ms, curve Curves.easeInOut으로 스크롤.
 ```
 
 ### C-5. 7~8주차 — 인증 + 워크스페이스 (Week 7-8)

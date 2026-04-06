@@ -129,7 +129,7 @@ Body:           Inter — Regular(w400), 14px
 
 **일정 생성 (Bottom Sheet)** — FAB(+) 또는 빈 공간 탭 시 하단에서 올라오는 Bottom Sheet. 큰 제목 필드가 상단에 위치. 카드형 행으로 DATE / TIME / REPEAT / ALERT 배치. DESCRIPTION & NOTES 영역. 좌측 X(닫기), 우측 ✓(저장).
 
-**일정 상세 보기 (Bottom Sheet)** — 이벤트 탭 시 올라오는 상세 화면. 제목 + 캘린더 라벨, DATE / TIME / ALERT / PEOPLE 표시. 참석자는 이니셜 원형 아바타 + "+N" 오버플로우. 헤더에 편집/삭제 아이콘.
+**일정 상세 보기 (Bottom Sheet)** — 이벤트 탭 시 올라오는 상세 화면. 동시에 뒤쪽 캘린더 타임라인이 해당 이벤트가 Sheet 위 보이는 영역(상단 30~40%)의 중앙에 오도록 부드럽게 자동 스크롤됨. 제목 + 캘린더 라벨, DATE / TIME / ALERT / PEOPLE 표시. 참석자는 이니셜 원형 아바타 + "+N" 오버플로우. 헤더에 편집/삭제 아이콘.
 
 ---
 
@@ -156,7 +156,7 @@ Body:           Inter — Regular(w400), 14px
 | 기능 | 설명 | 우선순위 |
 |------|------|----------|
 | 일정 생성 | Bottom Sheet 빠른 추가 UI | P0 |
-| 일정 조회 | 이벤트 탭 시 상세 Bottom Sheet | P0 |
+| 일정 조회 | 이벤트 탭 시 상세 Bottom Sheet + 캘린더 타임라인이 해당 이벤트가 Sheet 위 보이는 영역의 중앙에 오도록 자동 스크롤 (ScrollController.animateTo) | P0 |
 | 일정 수정 | 상세 화면에서 편집 모드 진입 | P0 |
 | 일정 삭제 | 확인 다이얼로그 후 삭제 | P0 |
 | 드래그 앤 드롭 | 타임라인에서 드래그로 시간 변경 | P1 |

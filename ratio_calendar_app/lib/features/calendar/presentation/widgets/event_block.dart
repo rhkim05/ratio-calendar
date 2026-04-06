@@ -14,6 +14,14 @@ final _backgroundColors = <Color, Color>{
   AppColors.orangeBorder: AppColors.orangeBackground,
 };
 
+/// 강조 상태 배경색 매핑 (opacity 2~3배 — -50 → -100)
+final _highlightBackgroundColors = <Color, Color>{
+  AppColors.blueBorder: AppColors.blueBackgroundHighlight,
+  AppColors.tealBorder: AppColors.tealBackgroundHighlight,
+  AppColors.amberBorder: AppColors.amberBackgroundHighlight,
+  AppColors.orangeBorder: AppColors.orangeBackgroundHighlight,
+};
+
 /// 이벤트 블록 위젯
 /// - 연한 파스텔 배경 + 좌측 4px 컬러 보더
 /// - border-radius ≤ 8px (DESIGN.md §6)
@@ -24,11 +32,13 @@ class EventBlock extends StatelessWidget {
     required this.event,
     required this.color,
     this.onTap,
+    this.isHighlighted = false,
   });
 
   final EventEntity event;
   final Color color;
   final VoidCallback? onTap;
+  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +49,9 @@ class EventBlock extends StatelessWidget {
     final height = rawHeight - verticalInset * 2; // 상하 2px씩 축소
     final isCompact = height < 40;
 
-    final bgColor = _backgroundColors[color] ?? color.withValues(alpha: 0.06);
+    final bgColor = isHighlighted
+        ? (_highlightBackgroundColors[color] ?? color.withValues(alpha: 0.15))
+        : (_backgroundColors[color] ?? color.withValues(alpha: 0.06));
 
     return GestureDetector(
       onTap: onTap,
@@ -48,7 +60,8 @@ class EventBlock extends StatelessWidget {
         margin: const EdgeInsets.only(left: 2, right: 2, top: verticalInset),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppSizes.eventBorderRadius),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             color: bgColor,
             child: Row(
               children: [
