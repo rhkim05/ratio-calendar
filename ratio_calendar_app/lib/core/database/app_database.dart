@@ -18,8 +18,9 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -56,6 +57,27 @@ class AppDatabase {
         color_hex TEXT NOT NULL DEFAULT '#007AFF',
         is_visible INTEGER NOT NULL DEFAULT 1,
         workspace_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    await _createWorkspacesTable(db);
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createWorkspacesTable(db);
+    }
+  }
+
+  Future<void> _createWorkspacesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        owner_id TEXT NOT NULL,
+        members TEXT NOT NULL DEFAULT '[]',
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )

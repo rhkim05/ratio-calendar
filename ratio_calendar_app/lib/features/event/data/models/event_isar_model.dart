@@ -33,8 +33,8 @@ class EventDbConverter {
       date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
       startTime: DateTime.fromMillisecondsSinceEpoch(map['start_time'] as int),
       endTime: DateTime.fromMillisecondsSinceEpoch(map['end_time'] as int),
-      recurrence: RecurrenceType.values[map['recurrence'] as int],
-      alert: AlertType.values[map['alert'] as int],
+      recurrence: _safeRecurrence(map['recurrence'] as int?),
+      alert: _safeAlert(map['alert'] as int?),
       description: map['description'] as String?,
       attendees: (jsonDecode(map['attendees'] as String) as List)
           .cast<String>(),
@@ -42,5 +42,19 @@ class EventDbConverter {
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
     );
+  }
+
+  static RecurrenceType _safeRecurrence(int? index) {
+    if (index == null || index < 0 || index >= RecurrenceType.values.length) {
+      return RecurrenceType.never;
+    }
+    return RecurrenceType.values[index];
+  }
+
+  static AlertType _safeAlert(int? index) {
+    if (index == null || index < 0 || index >= AlertType.values.length) {
+      return AlertType.none;
+    }
+    return AlertType.values[index];
   }
 }

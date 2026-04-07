@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/domain/repositories/event_repository.dart';
+import 'package:ratio_calendar/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
 
 part 'event_providers.g.dart';
@@ -58,13 +59,23 @@ class LocalEventsNotifier extends AsyncNotifier<List<EventEntity>> {
   }
 }
 
-/// 날짜 기준으로 이벤트를 그룹핑하는 Provider
+/// 날짜 기준으로 이벤트를 그룹핑하는 Provider (비활성 캘린더 이벤트 제외)
 final localEventsByDateProvider =
     Provider<Map<String, List<EventEntity>>>((ref) {
   final eventsAsync = ref.watch(localEventsProvider);
   final events = eventsAsync.valueOrNull ?? [];
+  final isCalendarLoading = ref.watch(calendarLoadingProvider);
+  final visibleIds = ref.watch(visibleCalendarIdsProvider);
   final map = <String, List<EventEntity>>{};
+
+  // 캘린더 로딩 중이면 모든 이벤트 표시 (로딩 완료 전 깜빡임 방지)
+  // 로딩 완료 후 visibleIds가 비어있으면 모든 이벤트 숨김
+  if (!isCalendarLoading && visibleIds.isEmpty) return map;
+
   for (final event in events) {
+    if (!isCalendarLoading && !visibleIds.contains(event.calendarId)) {
+      continue;
+    }
     final key =
         '${event.date.year}-${event.date.month.toString().padLeft(2, '0')}-${event.date.day.toString().padLeft(2, '0')}';
     map.putIfAbsent(key, () => []).add(event);

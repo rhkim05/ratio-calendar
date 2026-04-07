@@ -3,6 +3,7 @@ import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/features/calendar/domain/entities/calendar_entity.dart';
 import 'package:ratio_calendar/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
+import 'package:ratio_calendar/features/workspace/presentation/providers/workspace_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'calendar_providers.g.dart';
@@ -109,8 +110,9 @@ class CalendarListNotifier extends AsyncNotifier<List<CalendarEntity>> {
   @override
   Future<List<CalendarEntity>> build() async {
     final repo = ref.watch(calendarRepositoryProvider);
-    await repo.ensureDefaults();
-    return repo.getAllCalendars();
+    final workspaceId = ref.watch(currentWorkspaceIdProvider);
+    await repo.ensureDefaults(workspaceId);
+    return repo.getCalendarsByWorkspace(workspaceId);
   }
 
   Future<void> add(CalendarEntity calendar) async {
@@ -161,3 +163,16 @@ List<CalendarEntity> visibleCalendars(VisibleCalendarsRef ref) {
       ) ??
       [];
 }
+
+/// 캘린더 목록 로딩 중 여부
+final calendarLoadingProvider = Provider<bool>((ref) {
+  final calendars = ref.watch(calendarListProvider);
+  return calendars.isLoading;
+});
+
+/// 토글이 켜진 캘린더의 ID 목록 (이벤트 필터링용)
+final visibleCalendarIdsProvider = Provider<Set<String>>((ref) {
+  final calendars = ref.watch(calendarListProvider);
+  final list = calendars.valueOrNull ?? <CalendarEntity>[];
+  return list.where((c) => c.isVisible).map((c) => c.id).toSet();
+});

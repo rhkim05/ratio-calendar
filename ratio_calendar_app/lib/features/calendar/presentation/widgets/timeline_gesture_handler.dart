@@ -101,6 +101,7 @@ mixin TimelineGestureHandler
       highlightStartMin = hour * 60;
       highlightEndMin = min((hour + 1) * 60, 24 * 60);
       _longPressAnchorMin = _snapTo10Min(rawMinute);
+      highlightedEventId = null;
     });
     HapticFeedback.mediumImpact();
   }
@@ -132,6 +133,7 @@ mixin TimelineGestureHandler
         highlightedDate = date;
         highlightStartMin = hour * 60;
         highlightEndMin = min((hour + 1) * 60, 24 * 60);
+        highlightedEventId = null;
       });
     }
   }

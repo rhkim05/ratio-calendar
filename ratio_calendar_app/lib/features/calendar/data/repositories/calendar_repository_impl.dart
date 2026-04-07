@@ -16,6 +16,11 @@ class CalendarRepositoryImpl implements CalendarRepository {
   }
 
   @override
+  Future<List<CalendarEntity>> getCalendarsByWorkspace(String workspaceId) {
+    return localDataSource.getCalendarsByWorkspace(workspaceId);
+  }
+
+  @override
   Future<CalendarEntity?> getCalendarById(String id) {
     return localDataSource.getCalendarById(id);
   }
@@ -36,36 +41,37 @@ class CalendarRepositoryImpl implements CalendarRepository {
   }
 
   /// 기본 캘린더(Personal, Work, Shared)가 없으면 자동 생성
+  /// 해당 워크스페이스에 캘린더가 없을 때만 생성
   @override
-  Future<void> ensureDefaults() async {
-    final existing = await localDataSource.getAllCalendars();
+  Future<void> ensureDefaults(String workspaceId) async {
+    final existing = await localDataSource.getCalendarsByWorkspace(workspaceId);
     if (existing.isNotEmpty) return;
 
     final now = DateTime.now();
     final defaults = [
       CalendarEntity(
-        id: 'personal',
+        id: '${workspaceId}_personal',
         name: 'Personal',
         colorHex: '#007AFF',
-        workspaceId: 'local',
+        workspaceId: workspaceId,
         createdAt: now,
         updatedAt: now,
       ),
       CalendarEntity(
-        id: 'work',
+        id: '${workspaceId}_work',
         name: 'Work',
-        colorHex: '#34C759',
-        workspaceId: 'local',
-        createdAt: now,
-        updatedAt: now,
+        colorHex: '#FF3B30',
+        workspaceId: workspaceId,
+        createdAt: now.add(const Duration(milliseconds: 1)),
+        updatedAt: now.add(const Duration(milliseconds: 1)),
       ),
       CalendarEntity(
-        id: 'shared',
+        id: '${workspaceId}_shared',
         name: 'Shared',
-        colorHex: '#FF9500',
-        workspaceId: 'local',
-        createdAt: now,
-        updatedAt: now,
+        colorHex: '#34C759',
+        workspaceId: workspaceId,
+        createdAt: now.add(const Duration(milliseconds: 2)),
+        updatedAt: now.add(const Duration(milliseconds: 2)),
       ),
     ];
     await localDataSource.saveCalendars(defaults);

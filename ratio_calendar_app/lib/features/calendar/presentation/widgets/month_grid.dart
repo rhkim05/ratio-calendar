@@ -41,7 +41,8 @@ class MonthGrid extends StatelessWidget {
   List<String> get _dayLabels {
     // DateTime.weekday: Mon=1 ~ Sun=7
     // _allDayLabels: [Mon, Tue, Wed, Thu, Fri, Sat, Sun] (index 0~6)
-    final startIndex = (startOfWeekDay - 1) % 7;
+    final validStartDay = startOfWeekDay.clamp(1, 7);
+    final startIndex = (validStartDay - 1) % 7;
     return [
       ..._allDayLabels.sublist(startIndex),
       ..._allDayLabels.sublist(0, startIndex),
@@ -87,12 +88,10 @@ class MonthGrid extends StatelessWidget {
     }
 
     // 다음 달 날짜 (6주 = 42칸 채우기)
+    final nextMonth = DateTime(displayedMonth.year, displayedMonth.month + 1, 1);
     while (dates.length < 42) {
-      dates.add(DateTime(
-        displayedMonth.year,
-        displayedMonth.month,
-        daysInMonth + (dates.length - startWeekday - daysInMonth) + 1,
-      ));
+      final nextDayNum = dates.length - startWeekday - daysInMonth + 1;
+      dates.add(DateTime(nextMonth.year, nextMonth.month, nextDayNum));
     }
 
     // 마지막 행이 모두 다음달이면 제거 (5주면 충분)

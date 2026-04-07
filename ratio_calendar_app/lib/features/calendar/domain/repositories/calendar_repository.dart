@@ -3,9 +3,10 @@ import 'package:ratio_calendar/features/calendar/domain/entities/calendar_entity
 /// 캘린더 Repository 인터페이스
 abstract class CalendarRepository {
   Future<List<CalendarEntity>> getAllCalendars();
+  Future<List<CalendarEntity>> getCalendarsByWorkspace(String workspaceId);
   Future<CalendarEntity?> getCalendarById(String id);
   Future<void> createCalendar(CalendarEntity calendar);
   Future<void> updateCalendar(CalendarEntity calendar);
   Future<void> deleteCalendar(String id);
-  Future<void> ensureDefaults();
+  Future<void> ensureDefaults(String workspaceId);
 }

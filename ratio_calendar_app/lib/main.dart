@@ -13,6 +13,9 @@ import 'features/event/data/datasources/event_local_datasource.dart';
 import 'features/event/data/repositories/event_repository_impl.dart';
 import 'features/event/presentation/providers/event_providers.dart';
 import 'features/settings/presentation/providers/settings_providers.dart';
+import 'features/workspace/data/datasources/workspace_local_datasource.dart';
+import 'features/workspace/data/repositories/workspace_repository_impl.dart';
+import 'features/workspace/presentation/providers/workspace_providers.dart';
 import 'firebase_options.dart';
 
 /// Ratio Calendar — 미니멀리즘 캘린더 앱
@@ -48,8 +51,10 @@ void main() async {
   // DataSource & Repository 생성
   final eventLocalDS = EventLocalDataSource(db);
   final calendarLocalDS = CalendarLocalDataSource(db);
+  final workspaceLocalDS = WorkspaceLocalDataSource(db);
   final eventRepo = EventRepositoryImpl(localDataSource: eventLocalDS);
   final calendarRepo = CalendarRepositoryImpl(localDataSource: calendarLocalDS);
+  final workspaceRepo = WorkspaceRepositoryImpl(localDataSource: workspaceLocalDS);
 
   // TODO: FCM 토큰 등록
 
@@ -59,6 +64,7 @@ void main() async {
         sharedPreferencesProvider.overrideWithValue(prefs),
         eventRepositoryProvider.overrideWithValue(eventRepo),
         calendarRepositoryProvider.overrideWithValue(calendarRepo),
+        workspaceRepositoryProvider.overrideWithValue(workspaceRepo),
       ],
       child: const RatioCalendarApp(),
     ),

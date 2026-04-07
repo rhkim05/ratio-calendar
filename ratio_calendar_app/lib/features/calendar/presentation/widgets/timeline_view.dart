@@ -220,7 +220,9 @@ class _CurrentTimeMarkerState extends State<_CurrentTimeMarker> {
     super.initState();
     _now = DateTime.now();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      setState(() => _now = DateTime.now());
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
     });
   }
 

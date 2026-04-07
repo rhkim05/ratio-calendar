@@ -65,9 +65,12 @@ class AuthNotifier extends Notifier<AuthState> {
     _datasource = ref.read(authRemoteDatasourceProvider);
     _migrationService = ref.read(migrationServiceProvider);
 
-    // Firebase Auth 상태 리스닝
-    _authSub = _datasource.authStateChanges.listen(_onAuthStateChanged);
-    ref.onDispose(() => _authSub?.cancel());
+    // Firebase Auth 상태 리스닝 (중복 구독 방지)
+    _authSub ??= _datasource.authStateChanges.listen(_onAuthStateChanged);
+    ref.onDispose(() {
+      _authSub?.cancel();
+      _authSub = null;
+    });
 
     // 초기 상태: 현재 사용자 확인
     final currentUser = _datasource.currentUser;
@@ -94,18 +97,25 @@ class AuthNotifier extends Notifier<AuthState> {
           .get();
 
       if (doc.exists) {
-        final data = doc.data()!;
-        state = AuthAuthenticated(
-          user: UserEntity(
-            id: firebaseUser.uid,
-            email: firebaseUser.email ?? '',
-            displayName: data['displayName'] as String?,
-            photoUrl: data['photoUrl'] as String?,
-            defaultWorkspaceId: data['defaultWorkspaceId'] as String,
-            createdAt:
-                (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          ),
-        );
+        final data = doc.data();
+        if (data != null) {
+          try {
+            state = AuthAuthenticated(
+              user: UserEntity(
+                id: firebaseUser.uid,
+                email: firebaseUser.email ?? '',
+                displayName: data['displayName'] as String?,
+                photoUrl: data['photoUrl'] as String?,
+                defaultWorkspaceId:
+                    (data['defaultWorkspaceId'] as String?) ?? 'default',
+                createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+                    DateTime.now(),
+              ),
+            );
+          } catch (e) {
+            state = AuthError(message: 'Failed to load user data: $e');
+          }
+        }
       } else {
         // 신규 사용자 — Firestore 문서 + 워크스페이스 생성
         await _createNewUser(firebaseUser);

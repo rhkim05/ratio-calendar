@@ -5,6 +5,7 @@ import 'package:ratio_calendar/core/constants/app_sizes.dart';
 import 'package:ratio_calendar/core/constants/enums.dart';
 import 'package:ratio_calendar/core/theme/app_colors.dart';
 import 'package:ratio_calendar/core/theme/app_typography.dart';
+import 'package:ratio_calendar/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:ratio_calendar/features/event/domain/entities/event_entity.dart';
 import 'package:ratio_calendar/features/event/presentation/providers/event_providers.dart';
 import 'package:ratio_calendar/features/settings/presentation/providers/settings_providers.dart';
@@ -75,12 +76,18 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
   late DateTime _endTime;
   RecurrenceType _recurrence = RecurrenceType.never;
   late AlertType _alert;
+  late String _selectedCalendarId;
 
   @override
   void initState() {
     super.initState();
     _alert = ref.read(settingsProvider).defaultReminderTime;
     final now = DateTime.now();
+
+    // 기본 캘린더 ID 설정: 활성 캘린더 중 첫 번째 (보통 Personal)
+    final visibleCalendars = ref.read(visibleCalendarsProvider);
+    final allCalendars = ref.read(calendarListProvider).valueOrNull ?? [];
+    final calendarList = visibleCalendars.isNotEmpty ? visibleCalendars : allCalendars;
 
     if (widget.isEditMode && widget.event != null) {
       // 편집 모드: 기존 이벤트 데이터로 필드 초기화
@@ -92,6 +99,7 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
       _endTime = e.endTime;
       _recurrence = e.recurrence;
       _alert = e.alert;
+      _selectedCalendarId = e.calendarId;
     } else {
       // 생성 모드
       _selectedDate = widget.initialDate ?? DateTime(now.year, now.month, now.day);
@@ -109,6 +117,9 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
         );
         _endTime = _startTime.add(const Duration(hours: 1));
       }
+      _selectedCalendarId = calendarList.isNotEmpty
+          ? calendarList.first.id
+          : 'personal';
     }
 
     // 시트 올라온 후 제목 필드에 포커스
@@ -126,47 +137,56 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
   }
 
   Future<void> _save() async {
-    final title = _titleController.text.trim();
-    if (title.isEmpty) return;
+    try {
+      final title = _titleController.text.trim();
+      if (title.isEmpty) return;
 
-    final now = DateTime.now();
+      final now = DateTime.now();
 
-    if (widget.isEditMode && widget.event != null) {
-      // 편집 모드: 기존 이벤트 업데이트
-      final updated = widget.event!.copyWith(
-        title: title,
-        date: _selectedDate,
-        startTime: _startTime,
-        endTime: _endTime,
-        recurrence: _recurrence,
-        alert: _alert,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        updatedAt: now,
-      );
-      await ref.read(localEventsProvider.notifier).edit(updated);
-    } else {
-      // 생성 모드: 새 이벤트 추가
-      final event = EventEntity(
-        id: 'local-${now.millisecondsSinceEpoch}',
-        title: title,
-        date: _selectedDate,
-        startTime: _startTime,
-        endTime: _endTime,
-        recurrence: _recurrence,
-        alert: _alert,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        calendarId: 'personal',
-        createdAt: now,
-        updatedAt: now,
-      );
-      await ref.read(localEventsProvider.notifier).add(event);
+      if (widget.isEditMode && widget.event != null) {
+        // 편집 모드: 기존 이벤트 업데이트
+        final updated = widget.event!.copyWith(
+          title: title,
+          date: _selectedDate,
+          startTime: _startTime,
+          endTime: _endTime,
+          recurrence: _recurrence,
+          alert: _alert,
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          calendarId: _selectedCalendarId,
+          updatedAt: now,
+        );
+        await ref.read(localEventsProvider.notifier).edit(updated);
+      } else {
+        // 생성 모드: 새 이벤트 추가
+        final event = EventEntity(
+          id: 'local-${now.millisecondsSinceEpoch}',
+          title: title,
+          date: _selectedDate,
+          startTime: _startTime,
+          endTime: _endTime,
+          recurrence: _recurrence,
+          alert: _alert,
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          calendarId: _selectedCalendarId,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await ref.read(localEventsProvider.notifier).add(event);
+      }
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('이벤트 저장 실패: $e')),
+        );
+      }
     }
-
-    Navigator.of(context).pop();
   }
 
   Future<void> _pickDate() async {
@@ -256,6 +276,50 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
     );
   }
 
+  void _pickCalendar() {
+    final calendars = ref.read(calendarListProvider).valueOrNull ?? [];
+    if (calendars.isEmpty) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: calendars
+              .map(
+                (cal) => ListTile(
+                  leading: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: _hexToColor(cal.colorHex),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  title: Text(cal.name, style: AppTypography.body),
+                  trailing: cal.id == _selectedCalendarId
+                      ? const Icon(Icons.check,
+                          size: 20, color: AppColors.textPrimary)
+                      : null,
+                  onTap: () {
+                    setState(() => _selectedCalendarId = cal.id);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  Color _hexToColor(String hex) {
+    final buffer = StringBuffer();
+    if (hex.length == 7) buffer.write('FF');
+    buffer.write(hex.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
+
   void _pickAlert() {
     showModalBottomSheet<void>(
       context: context,
@@ -309,6 +373,8 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
             children: [
               _buildHeader(),
               _buildTitleField(),
+              const _SheetDivider(),
+              _buildCalendarRow(),
               const _SheetDivider(),
               _buildRow(
                 label: 'DATE',
@@ -399,6 +465,53 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
           isDense: true,
         ),
         textCapitalization: TextCapitalization.sentences,
+      ),
+    );
+  }
+
+  /// 캘린더 선택 행 — 색상 원 + 캘린더 이름
+  Widget _buildCalendarRow() {
+    final calendars = ref.watch(calendarListProvider).valueOrNull ?? [];
+    final selected = calendars
+        .where((c) => c.id == _selectedCalendarId)
+        .firstOrNull;
+    final calendarName = selected?.name ?? 'Personal';
+    final calendarColor = selected != null
+        ? _hexToColor(selected.colorHex)
+        : const Color(0xFF007AFF);
+
+    return InkWell(
+      onTap: _pickCalendar,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.lg,
+          vertical: AppSizes.md,
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 72,
+              child: Text('CALENDAR', style: AppTypography.sectionLabel),
+            ),
+            Container(
+              width: 10,
+              height: 10,
+              margin: const EdgeInsets.only(right: AppSizes.xs),
+              decoration: BoxDecoration(
+                color: calendarColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            Expanded(
+              child: Text(calendarName, style: AppTypography.body),
+            ),
+            Icon(
+              Icons.circle_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }

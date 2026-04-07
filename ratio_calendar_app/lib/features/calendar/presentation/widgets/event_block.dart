@@ -48,7 +48,7 @@ class EventBlock extends StatelessWidget {
         event.endTime.difference(event.startTime).inMinutes;
     const verticalInset = 2.0;
     final rawHeight = durationMinutes * hourHeight / 60;
-    final height = rawHeight - verticalInset * 2; // 상하 2px씩 축소
+    final height = (rawHeight - verticalInset * 2).clamp(0.0, double.infinity); // 상하 2px씩 축소, 음수 방지
     final isCompact = height < 40;
 
     final bgColor = isHighlighted
