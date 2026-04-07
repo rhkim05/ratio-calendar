@@ -108,13 +108,15 @@ class _EventCreateSheetState extends ConsumerState<EventCreateSheet> {
         _startTime = widget.initialStartTime!;
         _endTime = widget.initialEndTime ?? _startTime.add(const Duration(hours: 1));
       } else {
-        final nextHour = now.hour + 1;
-        _startTime = DateTime(
+        // 23시 이후면 다음 날 0시로 처리
+        final baseStart = DateTime(
           _selectedDate.year,
           _selectedDate.month,
           _selectedDate.day,
-          nextHour.clamp(0, 23),
-        );
+          now.hour,
+        ).add(const Duration(hours: 1));
+        _startTime = baseStart;
+        _selectedDate = DateTime(baseStart.year, baseStart.month, baseStart.day);
         _endTime = _startTime.add(const Duration(hours: 1));
       }
       _selectedCalendarId = calendarList.isNotEmpty

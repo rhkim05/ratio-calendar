@@ -97,6 +97,15 @@ abstract final class AppTypography {
     height: 1.5,
   );
 
+  // ── Body Small ──
+  // 13px — Auth, Error, Link 등 보조 본문
+  static final bodySmall = GoogleFonts.dmSans(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textPrimary,
+    height: 1.5,
+  );
+
   // ── Caption / Micro ──
   // DESIGN.md: 10–12px / Bold or Black
   static final caption = GoogleFonts.dmSans(

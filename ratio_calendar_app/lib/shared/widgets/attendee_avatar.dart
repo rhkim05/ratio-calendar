@@ -18,10 +18,11 @@ class AttendeeAvatar extends StatelessWidget {
 
   String get _initials {
     final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
+    if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final trimmed = name.trim();
+    return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
   }
 
   @override

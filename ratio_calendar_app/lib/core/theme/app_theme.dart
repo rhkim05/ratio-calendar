@@ -40,9 +40,6 @@ abstract final class AppTheme {
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
 
-        // ── Platform-adaptive 동작 통일 (iOS 스타일 제거) ──
-        platform: TargetPlatform.android,
-
         // Inter 기본 폰트
         textTheme: GoogleFonts.dmSansTextTheme().copyWith(
           displayLarge: AppTypography.sheetTitle,

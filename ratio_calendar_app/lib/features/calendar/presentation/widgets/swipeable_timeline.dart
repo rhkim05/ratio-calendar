@@ -137,17 +137,32 @@ class _SwipeableTimelineState extends ConsumerState<SwipeableTimeline> {
     } else if (_isSwipeNav) {
       _isSwipeNav = false;
     } else {
-      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등) — 300ms 애니메이션
-      final targetOffset = _dateToIndex(visibleRange.start) * columnWidth;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_hController != null && _hController!.hasClients) {
-          _hController!.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        }
-      });
+      // 외부 날짜 변경 (Today 버튼, 월 뷰 선택 등)
+      final targetIndex = _dateToIndex(visibleRange.start);
+
+      // baseDate에서 ±bufferDays 범위를 벗어나면 재초기화
+      if (targetIndex < 0 || targetIndex >= _totalDays) {
+        _baseDate = visibleRange.start;
+        final newOffset = _dateToIndex(visibleRange.start) * columnWidth;
+        _hController?.removeListener(_syncHeader);
+        _hController?.dispose();
+        _headerController?.dispose();
+        _hController = ScrollController(initialScrollOffset: newOffset);
+        _headerController = ScrollController(initialScrollOffset: newOffset);
+        _hController!.addListener(_syncHeader);
+      } else {
+        // 범위 내 — 300ms 애니메이션
+        final targetOffset = targetIndex * columnWidth;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_hController != null && _hController!.hasClients) {
+            _hController!.animateTo(
+              targetOffset,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
+      }
     }
 
     final isPinching = _pointerCount >= 2;

@@ -112,20 +112,25 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final accentIndex = _prefs.getInt(_Keys.accentColorIndex);
 
     return AppSettings(
-      defaultView: viewIndex != null && viewIndex < CalendarViewType.values.length
-          ? CalendarViewType.values[viewIndex]
-          : CalendarViewType.threeDay,
-      startOfWeek: weekIndex != null && weekIndex < StartOfWeek.values.length
-          ? StartOfWeek.values[weekIndex]
-          : StartOfWeek.sunday,
+      defaultView: _safeEnum(CalendarViewType.values, viewIndex, CalendarViewType.threeDay),
+      startOfWeek: _safeEnum(StartOfWeek.values, weekIndex, StartOfWeek.sunday),
       eventReminders: reminders ?? true,
-      defaultReminderTime:
-          reminderIndex != null && reminderIndex < AlertType.values.length
-              ? AlertType.values[reminderIndex]
-              : AlertType.fifteenMinutes,
+      defaultReminderTime: _safeEnum(AlertType.values, reminderIndex, AlertType.fifteenMinutes),
       dailyAgenda: agenda ?? false,
-      accentColorIndex: accentIndex ?? 0,
+      accentColorIndex: accentIndex != null &&
+              accentIndex >= 0 &&
+              accentIndex < accentColorOptions.length
+          ? accentIndex
+          : 0,
     );
+  }
+
+  /// enum index 안전 역직렬화 — null이거나 범위 밖이면 기본값 반환
+  static T _safeEnum<T>(List<T> values, int? index, T defaultValue) {
+    if (index == null || index < 0 || index >= values.length) {
+      return defaultValue;
+    }
+    return values[index];
   }
 
   void setDefaultView(CalendarViewType view) {

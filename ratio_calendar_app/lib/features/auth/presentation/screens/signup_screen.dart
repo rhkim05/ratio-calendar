@@ -124,10 +124,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       // 타이틀
                       Text(
                         'CREATE ACCOUNT',
-                        style: AppTypography.headline.copyWith(
-                          fontSize: 28,
-                          letterSpacing: 2.0,
-                        ),
+                        style: AppTypography.monthTitle,
                       ),
                       const SizedBox(height: AppSizes.xs),
                       Text(
@@ -151,9 +148,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ),
                           child: Text(
                             _errorMessage!,
-                            style: AppTypography.body.copyWith(
+                            style: AppTypography.bodySmall.copyWith(
                               color: AppColors.work,
-                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -169,7 +165,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           if (v == null || v.trim().isEmpty) {
                             return 'Email is required';
                           }
-                          if (!v.contains('@')) return 'Invalid email';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v)) {
+                            return 'Invalid email';
+                          }
                           return null;
                         },
                       ),
@@ -275,17 +273,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           child: RichText(
                             text: TextSpan(
                               text: 'Already have an account?  ',
-                              style: AppTypography.body.copyWith(
+                              style: AppTypography.bodySmall.copyWith(
                                 color: AppColors.textSecondary,
-                                fontSize: 13,
                               ),
                               children: [
                                 TextSpan(
                                   text: 'Sign In',
-                                  style: AppTypography.body.copyWith(
+                                  style: AppTypography.bodySmall.copyWith(
                                     color: AppColors.personal,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 13,
                                   ),
                                 ),
                               ],
@@ -322,9 +318,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       style: AppTypography.body,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.body.copyWith(
+        labelStyle: AppTypography.bodySmall.copyWith(
           color: AppColors.textSecondary,
-          fontSize: 13,
         ),
         suffixIcon: suffix != null
             ? Padding(

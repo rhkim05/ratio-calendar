@@ -107,11 +107,16 @@ final calendarListProvider =
 );
 
 class CalendarListNotifier extends AsyncNotifier<List<CalendarEntity>> {
+  /// ensureDefaults가 완료된 워크스페이스 ID 캐시
+  final _initializedWorkspaces = <String>{};
+
   @override
   Future<List<CalendarEntity>> build() async {
     final repo = ref.watch(calendarRepositoryProvider);
     final workspaceId = ref.watch(currentWorkspaceIdProvider);
-    await repo.ensureDefaults(workspaceId);
+    if (_initializedWorkspaces.add(workspaceId)) {
+      await repo.ensureDefaults(workspaceId);
+    }
     return repo.getCalendarsByWorkspace(workspaceId);
   }
 

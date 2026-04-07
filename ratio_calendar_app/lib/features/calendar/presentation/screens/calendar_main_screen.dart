@@ -21,12 +21,7 @@ import 'package:ratio_calendar/features/side_menu/presentation/screens/side_menu
 class CalendarMainScreen extends ConsumerWidget {
   const CalendarMainScreen({super.key});
 
-  static const _mockColors = <String, Color>{
-    'sprint': AppColors.blueBorder,
-    'design': AppColors.tealBorder,
-    'deepwork': AppColors.amberBorder,
-    'standup': AppColors.orangeBorder,
-  };
+  static const _mockColors = AppColors.defaultCalendarColors;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,6 +30,26 @@ class CalendarMainScreen extends ConsumerWidget {
     final viewType = ref.watch(currentViewTypeProvider);
     final localEvents = ref.watch(localEventsByDateProvider);
     final accent = ref.watch(accentColorProvider);
+    final calendarListAsync = ref.watch(calendarListProvider);
+
+    // 캘린더 목록 에러 시 SnackBar 표시
+    ref.listen(calendarListProvider, (prev, next) {
+      next.whenOrNull(
+        error: (error, _) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('캘린더 로드 실패: $error')),
+          );
+        },
+      );
+    });
+
+    // 캘린더 목록 로딩 중이면 로딩 표시
+    if (calendarListAsync.isLoading && !calendarListAsync.hasValue) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -272,7 +287,7 @@ class CalendarMainScreen extends ConsumerWidget {
             decoration: isToday
                 ? BoxDecoration(
                     color: accent,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                   )
                 : null,
             alignment: Alignment.center,
@@ -281,7 +296,7 @@ class CalendarMainScreen extends ConsumerWidget {
               child: Text(
                 day.day.toString(),
                 style: AppTypography.dateNumber.copyWith(
-                  color: isToday ? Colors.white : AppColors.textPrimary,
+                  color: isToday ? AppColors.background : AppColors.textPrimary,
                 ),
                 maxLines: 1,
               ),
@@ -320,7 +335,7 @@ class CalendarMainScreen extends ConsumerWidget {
               decoration: isToday
                   ? BoxDecoration(
                       color: accent,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                     )
                   : null,
               alignment: Alignment.center,
@@ -329,7 +344,7 @@ class CalendarMainScreen extends ConsumerWidget {
                 child: Text(
                   day.day.toString(),
                   style: AppTypography.dateNumber.copyWith(
-                    color: isToday ? Colors.white : AppColors.textPrimary,
+                    color: isToday ? AppColors.background : AppColors.textPrimary,
                   ),
                   maxLines: 1,
                 ),

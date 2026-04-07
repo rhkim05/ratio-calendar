@@ -89,9 +89,9 @@ class MonthGrid extends StatelessWidget {
 
     // 다음 달 날짜 (6주 = 42칸 채우기)
     final nextMonth = DateTime(displayedMonth.year, displayedMonth.month + 1, 1);
+    var nextDay = 1;
     while (dates.length < 42) {
-      final nextDayNum = dates.length - startWeekday - daysInMonth + 1;
-      dates.add(DateTime(nextMonth.year, nextMonth.month, nextDayNum));
+      dates.add(DateTime(nextMonth.year, nextMonth.month, nextDay++));
     }
 
     // 마지막 행이 모두 다음달이면 제거 (5주면 충분)

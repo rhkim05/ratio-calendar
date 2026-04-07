@@ -105,9 +105,9 @@ class _FullContent extends StatelessWidget {
         Flexible(
           child: Text(
             event.title,
-            style: AppTypography.eventTitle.copyWith(
+            style: AppTypography.bodySmall.copyWith(
               color: color,
-              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -128,9 +128,8 @@ class _CompactContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       event.title,
-      style: AppTypography.eventTitle.copyWith(
+      style: AppTypography.caption.copyWith(
         color: color,
-        fontSize: 10,
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

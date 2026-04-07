@@ -55,6 +55,14 @@ abstract final class AppColors {
   // ── Today Column ──
   static const todayColumnTint = Colors.transparent;      // 오늘 컬럼 배경 tint 없음
 
+  // ── Mock / Default Calendar Color Map ──
+  static const defaultCalendarColors = <String, Color>{
+    'sprint': blueBorder,
+    'design': tealBorder,
+    'deepwork': amberBorder,
+    'standup': orangeBorder,
+  };
+
   // ── Dark Mode (Phase 2) ──
   static const darkBackground = Color(0xFF1C1C1E);
   static const darkSurface = Color(0xFF2C2C2E);

@@ -97,10 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       // 타이틀
                       Text(
                         'SIGN IN',
-                        style: AppTypography.headline.copyWith(
-                          fontSize: 28,
-                          letterSpacing: 2.0,
-                        ),
+                        style: AppTypography.monthTitle,
                       ),
                       const SizedBox(height: AppSizes.xs),
                       Text(
@@ -124,9 +121,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           child: Text(
                             authState.message,
-                            style: AppTypography.body.copyWith(
+                            style: AppTypography.bodySmall.copyWith(
                               color: AppColors.work,
-                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -142,7 +138,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (v == null || v.trim().isEmpty) {
                             return 'Email is required';
                           }
-                          if (!v.contains('@')) return 'Invalid email';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v)) {
+                            return 'Invalid email';
+                          }
                           return null;
                         },
                       ),
@@ -222,9 +220,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             child: Text(
                               'or',
-                              style: AppTypography.caption.copyWith(
+                              style: AppTypography.bodySmall.copyWith(
                                 color: AppColors.textSecondary,
-                                fontSize: 12,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -254,10 +251,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                           ),
-                          icon: const Text(
+                          icon: Text(
                             'G',
-                            style: TextStyle(
-                              fontSize: 18,
+                            style: AppTypography.headline.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -279,17 +275,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: RichText(
                             text: TextSpan(
                               text: "Don't have an account?  ",
-                              style: AppTypography.body.copyWith(
+                              style: AppTypography.bodySmall.copyWith(
                                 color: AppColors.textSecondary,
-                                fontSize: 13,
                               ),
                               children: [
                                 TextSpan(
                                   text: 'Sign Up',
-                                  style: AppTypography.body.copyWith(
+                                  style: AppTypography.bodySmall.copyWith(
                                     color: AppColors.personal,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 13,
                                   ),
                                 ),
                               ],
@@ -326,9 +320,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       style: AppTypography.body,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: AppTypography.body.copyWith(
+        labelStyle: AppTypography.bodySmall.copyWith(
           color: AppColors.textSecondary,
-          fontSize: 13,
         ),
         suffixIcon: suffix != null
             ? Padding(
