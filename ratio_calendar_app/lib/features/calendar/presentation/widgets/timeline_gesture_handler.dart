@@ -96,12 +96,12 @@ mixin TimelineGestureHandler
 
   void handleLongPressStart(DateTime date, int rawMinute, double hourHeight) {
     final hour = (rawMinute / 60).floor().clamp(0, 23);
+    highlightedEventId = null;
     setState(() {
       highlightedDate = date;
       highlightStartMin = hour * 60;
       highlightEndMin = min((hour + 1) * 60, 24 * 60);
       _longPressAnchorMin = _snapTo10Min(rawMinute);
-      highlightedEventId = null;
     });
     HapticFeedback.mediumImpact();
   }
@@ -129,11 +129,12 @@ mixin TimelineGestureHandler
       _onHighlightedSlotTap(date);
     } else {
       final hour = (rawMinute / 60).floor().clamp(0, 23);
+      // setState 전에 클리어하여 EventBlock AnimatedContainer 깜빡임 방지
+      highlightedEventId = null;
       setState(() {
         highlightedDate = date;
         highlightStartMin = hour * 60;
         highlightEndMin = min((hour + 1) * 60, 24 * 60);
-        highlightedEventId = null;
       });
     }
   }
@@ -187,7 +188,8 @@ mixin TimelineGestureHandler
     await widget.onEventTap?.call(event);
 
     if (mounted) {
-      setState(() => highlightedEventId = null);
+      highlightedEventId = null;
+      setState(() {});
     }
   }
 }

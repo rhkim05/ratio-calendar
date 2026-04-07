@@ -99,12 +99,8 @@ class CalendarMainScreen extends ConsumerWidget {
     Map<String, List<EventEntity>> localEvents,
     Color accent,
   ) {
-    final mockEvents = _buildMonthMockEvents(selectedDate);
-    // 로컬 이벤트를 mock 이벤트에 머지
-    _mergeEvents(mockEvents, localEvents);
-
     final selectedKey = _dateKey(selectedDate);
-    final selectedEvents = mockEvents[selectedKey] ?? [];
+    final selectedEvents = localEvents[selectedKey] ?? [];
 
     return SingleChildScrollView(
       child: Column(
@@ -112,7 +108,7 @@ class CalendarMainScreen extends ConsumerWidget {
           MonthGrid(
             displayedMonth: DateTime(selectedDate.year, selectedDate.month),
             selectedDate: selectedDate,
-            eventsByDay: mockEvents,
+            eventsByDay: localEvents,
             calendarColors: _mockColors,
             startOfWeekDay: ref.watch(
               settingsProvider.select((s) => s.startOfWeek.weekday),
@@ -153,13 +149,6 @@ class CalendarMainScreen extends ConsumerWidget {
   ) {
     final isDayView = viewType == CalendarViewType.day;
 
-    // Mock 이벤트는 오늘/내일만 해당 — 날짜 범위 무관하게 생성
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final mockEvents = _buildMockEvents([today, tomorrow]);
-    _mergeEvents(mockEvents, localEvents);
-
     return SwipeableTimeline(
       key: ValueKey(viewType),
       viewType: viewType,
@@ -178,7 +167,7 @@ class CalendarMainScreen extends ConsumerWidget {
           dayColumnWidth: dayColumnWidth,
           totalDays: totalDays,
           indexToDate: indexToDate,
-          eventsByDay: mockEvents,
+          eventsByDay: localEvents,
           calendarColors: _mockColors,
           isPinching: isPinching,
           onEmptySlotTap: (startTime, endTime) => EventCreateSheet.show(
@@ -204,16 +193,6 @@ class CalendarMainScreen extends ConsumerWidget {
   }
 
   // ── Helpers ──
-
-  /// 로컬 이벤트를 기존 이벤트 맵에 머지
-  void _mergeEvents(
-    Map<String, List<EventEntity>> target,
-    Map<String, List<EventEntity>> source,
-  ) {
-    for (final entry in source.entries) {
-      target.putIfAbsent(entry.key, () => []).addAll(entry.value);
-    }
-  }
 
   void _goToToday(WidgetRef ref, CalendarViewType viewType) {
     final now = DateTime.now();
@@ -356,165 +335,4 @@ class CalendarMainScreen extends ConsumerWidget {
     );
   }
 
-  /// Month View용 Mock 이벤트 — 해당 월 전체에 샘플 데이터 배치
-  Map<String, List<EventEntity>> _buildMonthMockEvents(DateTime selected) {
-    final result = <String, List<EventEntity>>{};
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    // 오늘 이벤트
-    final todayKey = _dateKey(today);
-    result[todayKey] = [
-      EventEntity(
-        id: 'month-1',
-        title: 'Design Sync',
-        date: today,
-        startTime: DateTime(today.year, today.month, today.day, 10, 0),
-        endTime: DateTime(today.year, today.month, today.day, 11, 0),
-        calendarId: 'design',
-        createdAt: now,
-        updatedAt: now,
-      ),
-      EventEntity(
-        id: 'month-2',
-        title: 'Project Drafting',
-        date: today,
-        startTime: DateTime(today.year, today.month, today.day, 14, 0),
-        endTime: DateTime(today.year, today.month, today.day, 16, 30),
-        calendarId: 'deepwork',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    // 내일
-    final tomorrow = today.add(const Duration(days: 1));
-    final tomorrowKey = _dateKey(tomorrow);
-    result[tomorrowKey] = [
-      EventEntity(
-        id: 'month-3',
-        title: 'Team Standup',
-        date: tomorrow,
-        startTime: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 30),
-        endTime: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 10, 0),
-        calendarId: 'standup',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    // 2일 전
-    final twoDaysAgo = today.subtract(const Duration(days: 2));
-    final twoDaysAgoKey = _dateKey(twoDaysAgo);
-    result[twoDaysAgoKey] = [
-      EventEntity(
-        id: 'month-4',
-        title: 'Sprint Planning',
-        date: twoDaysAgo,
-        startTime: DateTime(twoDaysAgo.year, twoDaysAgo.month, twoDaysAgo.day, 9, 0),
-        endTime: DateTime(twoDaysAgo.year, twoDaysAgo.month, twoDaysAgo.day, 10, 0),
-        calendarId: 'sprint',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    // 5일 후
-    final fiveDaysLater = today.add(const Duration(days: 5));
-    final fiveDaysKey = _dateKey(fiveDaysLater);
-    result[fiveDaysKey] = [
-      EventEntity(
-        id: 'month-5',
-        title: 'Sprint Review',
-        date: fiveDaysLater,
-        startTime: DateTime(fiveDaysLater.year, fiveDaysLater.month, fiveDaysLater.day, 15, 0),
-        endTime: DateTime(fiveDaysLater.year, fiveDaysLater.month, fiveDaysLater.day, 16, 0),
-        calendarId: 'sprint',
-        createdAt: now,
-        updatedAt: now,
-      ),
-      EventEntity(
-        id: 'month-6',
-        title: 'Design Review',
-        date: fiveDaysLater,
-        startTime: DateTime(fiveDaysLater.year, fiveDaysLater.month, fiveDaysLater.day, 16, 0),
-        endTime: DateTime(fiveDaysLater.year, fiveDaysLater.month, fiveDaysLater.day, 17, 0),
-        calendarId: 'design',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    return result;
-  }
-
-  /// Day/3-Day View용 Mock 이벤트
-  Map<String, List<EventEntity>> _buildMockEvents(List<DateTime> days) {
-    final result = <String, List<EventEntity>>{};
-    final now = DateTime.now();
-
-    for (final day in days) {
-      final key = _dateKey(day);
-      final events = <EventEntity>[];
-
-      if (day.year == now.year &&
-          day.month == now.month &&
-          day.day == now.day) {
-        events.addAll([
-          EventEntity(
-            id: 'mock-1',
-            title: 'Sprint Planning',
-            date: day,
-            startTime: DateTime(day.year, day.month, day.day, 9, 0),
-            endTime: DateTime(day.year, day.month, day.day, 10, 0),
-            calendarId: 'sprint',
-            createdAt: now,
-            updatedAt: now,
-          ),
-          EventEntity(
-            id: 'mock-2',
-            title: 'Design Sync',
-            date: day,
-            startTime: DateTime(day.year, day.month, day.day, 10, 0),
-            endTime: DateTime(day.year, day.month, day.day, 11, 0),
-            calendarId: 'design',
-            createdAt: now,
-            updatedAt: now,
-          ),
-          EventEntity(
-            id: 'mock-3',
-            title: 'Deep Work: UI Phase 2',
-            date: day,
-            startTime: DateTime(day.year, day.month, day.day, 11, 0),
-            endTime: DateTime(day.year, day.month, day.day, 12, 30),
-            calendarId: 'deepwork',
-            createdAt: now,
-            updatedAt: now,
-          ),
-        ]);
-      }
-
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
-      if (day.year == tomorrow.year &&
-          day.month == tomorrow.month &&
-          day.day == tomorrow.day) {
-        events.add(
-          EventEntity(
-            id: 'mock-4',
-            title: 'Team Standup',
-            date: day,
-            startTime: DateTime(day.year, day.month, day.day, 9, 30),
-            endTime: DateTime(day.year, day.month, day.day, 10, 0),
-            calendarId: 'standup',
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-      }
-
-      result[key] = events;
-    }
-
-    return result;
-  }
 }
